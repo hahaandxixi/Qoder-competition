@@ -1,0 +1,35 @@
+# OS / OneDrive
+.DS_Store
+Thumbs.db
+desktop.ini
+Icon?
+*~
+
+# Editor
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.swp
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+
+# Node.js
+node_modules/
+dist/
+build/
+npm-debug.log*
+yarn-error.log*
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Logs & temp
+*.log
+tmp/
