@@ -493,6 +493,7 @@ export class BossScene extends Phaser.Scene {
     this.fightStarted = false;
     this.player.setControlEnabled(false);
     this.touch?.setEnabled(false);
+    this.hud.setVisible(false);
     this.cameras.main.zoomTo(1.3, 520, 'Sine.easeInOut');
     this.cameras.main.pan(BOSS_HOVER_X, 425, 620, 'Sine.easeInOut');
     audio.play('door');
@@ -634,10 +635,6 @@ export class BossScene extends Phaser.Scene {
       fontStyle: 'bold',
     });
     skipText.setOrigin(0.5);
-    const skipZone = this.add
-      .zone(halfW - 134, -halfH + 23, 232, 30)
-      .setInteractive({ useHandCursor: true });
-    skipZone.on('pointerup', () => this.finishIntro(true));
 
     const projection = this.add.container(GAME_WIDTH / 2, 132);
     projection.setDepth(446);
@@ -668,10 +665,11 @@ export class BossScene extends Phaser.Scene {
     });
     projSmall.setOrigin(0.5);
     projection.add([projG, projTitle, projSmall]);
-    introUi.add([bars, caption, skipBg, skipText, skipZone]);
+    introUi.add([bars, caption, skipBg, skipText]);
 
     this.introSkipHandler = () => this.finishIntro(true);
     this.input.keyboard?.on('keydown-SPACE', this.introSkipHandler);
+    this.input.on('pointerup', this.introSkipHandler);
 
     const tag = (text: string, x: number, y: number, delay: number, tone: string): void => {
       this.time.delayedCall(delay, () => {
@@ -832,6 +830,7 @@ export class BossScene extends Phaser.Scene {
     this.registry.set('bossIntroSeen', true);
     if (this.introSkipHandler) {
       this.input.keyboard?.off('keydown-SPACE', this.introSkipHandler);
+      this.input.off('pointerup', this.introSkipHandler);
       this.introSkipHandler = null;
     }
     this.introWorld?.destroy(true);
@@ -846,12 +845,13 @@ export class BossScene extends Phaser.Scene {
     this.cameras.main.zoomTo(1, 320, 'Sine.easeInOut');
     this.cameras.main.pan(GAME_WIDTH / 2, GAME_HEIGHT / 2, 320, 'Sine.easeInOut');
     this.input.keyboard?.resetKeys();
-    if (skipped) {
-      this.hud.toast('已跳过登场。', 'paper');
-    }
     this.time.delayedCall(90, () => {
       if (this.finished) {
         return;
+      }
+      this.hud.setVisible(true);
+      if (skipped) {
+        this.hud.toast('已跳过登场。', 'paper');
       }
       this.player.setControlEnabled(true);
       this.touch?.setEnabled(true);

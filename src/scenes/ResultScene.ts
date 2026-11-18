@@ -3,7 +3,7 @@ import { addScanlines, glitchText, paperButton, paperPanel, stamp } from '../art
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/balance';
 import { COLORS, CSS, FONTS, TEX } from '../config/theme';
 import { STRINGS, getCard } from '../data';
-import type { BestRecord, ResultPayload } from '../types/game';
+import type { BestRecord, ResultPayload, RunState } from '../types/game';
 import { audio } from '../systems/AudioSystem';
 import { resetRunState } from '../systems/RunState';
 import { SaveSystem, formatDuration } from '../systems/SaveSystem';
@@ -353,10 +353,14 @@ export class ResultScene extends Phaser.Scene {
   private retry(): void {
     audio.unlock();
     audio.play('select');
-    audio.setMusic('level');
-    resetRunState(this);
+    const run = this.registry.get('run') as RunState | undefined;
+    const retryBoss = !this.payload.victory && run?.door2Passed === true;
+    audio.setMusic(retryBoss ? 'boss' : 'level');
+    if (!retryBoss) {
+      resetRunState(this);
+    }
     this.cameras.main.fadeOut(220, 23, 19, 16);
-    this.time.delayedCall(240, () => this.scene.start('Level'));
+    this.time.delayedCall(240, () => this.scene.start(retryBoss ? 'Boss' : 'Level'));
   }
 
   private toMenu(): void {

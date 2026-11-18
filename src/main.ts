@@ -40,6 +40,6 @@ interface DebugWindow extends Window {
 }
 
 const game = new Phaser.Game(config);
-if (import.meta.env.DEV) {
+if (import.meta.env.DEV || new URLSearchParams(window.location.search).has('debug')) {
   (window as DebugWindow).__RACCOON_GAME__ = game;
 }

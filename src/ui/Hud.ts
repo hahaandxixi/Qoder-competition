@@ -243,6 +243,10 @@ export class Hud {
     this.muteText.setColor(audio.isMuted() ? CSS.paperDim : CSS.neon);
   }
 
+  setVisible(visible: boolean): void {
+    this.root.setVisible(visible);
+  }
+
   updatePlayer(hp: number, maxHp: number): void {
     const ratio = Phaser.Math.Clamp(hp / maxHp, 0, 1);
     this.hpValue.setText(`${Math.max(0, Math.ceil(hp))} / ${maxHp}`);
