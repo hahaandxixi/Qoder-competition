@@ -1,0 +1,96 @@
+[
+  {
+    "id": "gate_dashui",
+    "type": "gate",
+    "prompt": "弱者喝饮料，强者喝___",
+    "options": ["大水", "凉白开", "冰红茶", "苏打水"],
+    "answer": "大水",
+    "hint": "1.5L 起步的大瓶水，来自短视频口号",
+    "card": "heal"
+  },
+  {
+    "id": "gate_lina",
+    "type": "gate",
+    "prompt": "“我画地为牢啊，___”",
+    "options": ["厉娜", "那英", "韩红", "许飞"],
+    "answer": "厉娜",
+    "hint": "2026 年 11 月走红的综艺句式",
+    "card": "speed"
+  },
+  {
+    "id": "gate_gua",
+    "type": "gate",
+    "prompt": "“这瓜保熟吗”出自哪部电视剧？",
+    "options": ["《征服》", "《狂飙》", "《甄嬛传》", "《亮剑》"],
+    "answer": "《征服》",
+    "hint": "2003 年的警匪剧，被 AI 二创带火",
+    "card": "damage"
+  },
+  {
+    "id": "gate_bang",
+    "type": "gate",
+    "prompt": "“冷不丁___就两拳”",
+    "options": ["梆梆", "啪啪", "咚咚", "砰砰"],
+    "answer": "梆梆",
+    "hint": "拟声词，主打说打就打",
+    "card": "speed"
+  },
+  {
+    "id": "gate_guangzhi",
+    "type": "gate",
+    "prompt": "“广智救我”里的广智出自哪款游戏？",
+    "options": ["《黑神话：悟空》", "《原神》", "《王者荣耀》", "《永劫无间》"],
+    "answer": "《黑神话：悟空》",
+    "hint": "2024 年的国产单机",
+    "card": "heal"
+  },
+  {
+    "id": "gate_ciba",
+    "type": "gate",
+    "prompt": "“命运你假糍粑”谐音的是？",
+    "options": ["命运你假慈悲", "命运你真好吃", "命运你加麻薯", "命运你八十八"],
+    "answer": "命运你假慈悲",
+    "hint": "谐音梗，吐槽倒霉专用",
+    "card": "damage"
+  },
+  {
+    "id": "parry_yaoyao",
+    "type": "parry",
+    "prompt": "“遥遥领先”常被用来模仿什么场合？",
+    "options": ["科技发布会", "体育解说", "婚礼主持"],
+    "answer": "科技发布会",
+    "hint": "发布会对标友商的经典台词",
+    "card": "damage",
+    "bossLine": "遥遥领先！"
+  },
+  {
+    "id": "parry_paofen",
+    "type": "parry",
+    "prompt": "“跑分”和什么有关？",
+    "options": ["手机性能测试", "长跑比赛", "考试评分"],
+    "answer": "手机性能测试",
+    "hint": "数码圈的测试术语",
+    "card": "damage",
+    "bossLine": "不服跑个分！"
+  },
+  {
+    "id": "parry_haoshi",
+    "type": "parry",
+    "prompt": "“这是好事呀”属于哪类梗？",
+    "options": ["口头禅梗", "拟声词梗", "谐音梗"],
+    "answer": "口头禅梗",
+    "hint": "主播的口头禅被网友二创",
+    "card": "heal",
+    "bossLine": "这是好事呀！"
+  },
+  {
+    "id": "parry_fuermouse",
+    "type": "parry",
+    "prompt": "“背手负鼠”是什么动作？",
+    "options": ["背着手走路", "倒立吃香蕉", "举着双手跑"],
+    "answer": "背着手走路",
+    "hint": "负鼠双手背在身后的视频",
+    "card": "speed",
+    "bossLine": "高端化冲刺！"
+  }
+]

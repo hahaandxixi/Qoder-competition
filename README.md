@@ -27,6 +27,14 @@
 | 形态 | 纯静态网页（无后端），部署 Qoder Sites public |
 | 数据 | 本地 JSON 题库/卡池 + localStorage 进度 |
 
+## 本地运行
+
+```bash
+npm install
+npm run dev      # 开发预览 http://localhost:5173
+npm run build    # 生产构建，产物在 dist/（部署 Qoder Sites 用）
+```
+
 ## 文档
 
 - [开发文档](docs/开发文档.md)：完整设计、技术架构、数据结构、排期与验收清单
