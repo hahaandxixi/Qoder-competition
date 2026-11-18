@@ -41,7 +41,13 @@
     "doorPrompt": "名字门 404 · 按 E 查验",
     "doorLocked": "门缝里飘出一句：名字不对，不开。",
     "checkpoint": "临时签收点已更新",
-    "exitPrompt": "发布会大门 · 按 E 进入",
+    "exitPrompt": "发布会入口 · 按 E 进入",
+    "gate1Prompt": "收发室 · 按 E 核对代签单",
+    "gate1Locked": "收发室的代签单还没核对。",
+    "gate2Prompt": "取件窗口 365 · 按 E 按铃",
+    "gate2FarPrompt": "窗口停在 365 里外 · 按 E 倒带取回",
+    "gate2Retry": "纸路已卷回柜台 · 按 E 再答一次",
+    "bossLocked": "先把顶层取件窗口倒回来。",
     "vendingLow": "检测到弱者饮料需求。按 E 签收。",
     "vendingHigh": "强者请自便。",
     "vendingDone": "补给已领，别把瓶子乱丢。",
@@ -60,7 +66,17 @@
     "rewardSubtitle": "三选一，塞进你的梗卡签收袋。",
     "rewardHeal": "门缝里递出一瓶水，网络热度恢复 30%。",
     "rewardFull": "签收袋满了，最旧的梗卡被当场作废。",
-    "openStamp": "开门成功"
+    "openStamp": "开门成功",
+    "receiptHeader": "RECEIPT PRINTER // 发布会揭幕",
+    "receiptReady": "面单打印完成：请核对代签人。",
+    "receiptValid": "代签有效",
+    "receiptTail": "尾巴卷起签收联：Boss 战还能再用一次。",
+    "windowHeader": "PICKUP WINDOW // 365 里",
+    "windowTicket": "取件请绕行 365 里",
+    "windowTape": "纸路一端连着窗口，另一端缠在双轴磁带机上。",
+    "windowRewind": "线轴反转，取件窗口正在被拖回来。",
+    "windowFar": "取件窗口已滑到 365 里外。",
+    "windowDone": "取件铃：叮。窗口已经开成发布会入口。"
   },
   "quiz": {
     "parryEyebrow": "弹幕入侵 · 2 秒抢答",
@@ -85,7 +101,23 @@
     "defeated": "名字已夺回",
     "defeatedSub": "发布会临时取消，互联网恢复呼吸。",
     "barrageTop": "热搜直播中",
-    "staggerLine": "发布会暂停，热搜开始掉线。"
+    "staggerLine": "发布会暂停，热搜开始掉线。",
+    "cinematic": {
+      "skip": "空格 / 点击 跳过 >>",
+      "gateLock": "闸门落锁。发布会进入强制直播。",
+      "crateRattle": "周转箱晃了一下。",
+      "mic": "咔啵",
+      "scannerQuestion": "你是什么手机？",
+      "scan": "滴。",
+      "screenName": "甄领先｜本场主讲人",
+      "selfStamp": "补一枚主讲人章。",
+      "start": "发布会，现在开始。",
+      "radishAnnounce": "新品演示：全自动分类！",
+      "radishTag": "又是类魂",
+      "signingAnnounce": "全自动签收，准备！",
+      "signingReceipt": "代签人：甄建国",
+      "signingDone": "已签收"
+    }
   },
   "result": {
     "victoryEyebrow": "任务签收单 · 完成",

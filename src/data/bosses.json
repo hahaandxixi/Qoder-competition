@@ -18,10 +18,11 @@
         "phase": 1,
         "fromHpPct": 1.0,
         "attackIntervalMs": 2250,
-        "parryQuestionId": "parry_yaoyao",
+        "parryQuestionId": "parry_leihun",
         "attackPool": ["aimed_shots", "dash_combo"],
         "staggerMs": 3200,
-        "label": "常规发布 · 遥遥领先"
+        "label": "常规发布 · 又是类魂",
+        "special": "radish_stamping"
       },
       {
         "phase": 2,

@@ -228,82 +228,131 @@ function drawLobster(ctx: Ctx): void {
 
 function drawBoss(ctx: Ctx): void {
   const dark = '#14110f';
-  const suit = '#2a2723';
-  const suitLight = '#3c3831';
-  const paper = '#d9cdb3';
+  const ink = '#2a2723';
+  const paper = '#e9dfc8';
+  const paperShade = '#cdbfa2';
+  const paperDeep = '#a99878';
   const rust = '#a83a22';
+  const rustDark = '#6e2516';
   const warning = '#e8b23a';
   const neon = '#4be3c8';
 
   // ground shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.fillStyle = 'rgba(0,0,0,0.38)';
   ctx.beginPath();
-  ctx.ellipse(22.5 * 4, 51 * 4, 17 * 4, 2.5 * 4, 0, 0, Math.PI * 2);
+  ctx.ellipse(22.5 * 4, 50.5 * 4, 17 * 4, 3 * 4, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // legs
-  u(ctx, 14, 39, 6, 10, suit, 4);
-  u(ctx, 25, 39, 6, 10, suit, 4);
-  u(ctx, 12, 47, 9, 4, dark, 4);
-  u(ctx, 24, 47, 9, 4, dark, 4);
+  // paper-roll ahoge, behind the head
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = dark;
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.moveTo(22 * 4, 8 * 4);
+  ctx.quadraticCurveTo(20 * 4, 2 * 4, 26 * 4, 2 * 4);
+  ctx.quadraticCurveTo(33 * 4, 2 * 4, 31 * 4, 7 * 4);
+  ctx.stroke();
+  ctx.strokeStyle = paper;
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(22 * 4, 8 * 4);
+  ctx.quadraticCurveTo(20 * 4, 2 * 4, 26 * 4, 2 * 4);
+  ctx.quadraticCurveTo(33 * 4, 2 * 4, 31 * 4, 7 * 4);
+  ctx.stroke();
+  u(ctx, 20, 5, 2, 4, paperShade, 4);
+  u(ctx, 29, 3, 1, 3, paperShade, 4);
 
-  // torso
-  u(ctx, 11, 21, 23, 20, suit, 4);
-  u(ctx, 10, 24, 4, 12, suitLight, 4);
-  u(ctx, 31, 24, 4, 12, suitLight, 4);
-  u(ctx, 19, 22, 8, 13, paper, 4);
-  u(ctx, 21, 22, 4, 9, rust, 4);
-  u(ctx, 22, 31, 2, 5, rust, 4);
-  u(ctx, 13, 23, 4, 2, warning, 4);
+  // short legs and paper boots
+  u(ctx, 15, 39, 6, 9, paperShade, 4);
+  u(ctx, 25, 39, 6, 9, paperShade, 4);
+  u(ctx, 12, 47, 10, 4, dark, 4);
+  u(ctx, 24, 47, 10, 4, dark, 4);
+  u(ctx, 13, 47, 7, 1, paperDeep, 4);
+  u(ctx, 25, 47, 7, 1, paperDeep, 4);
 
-  // hovering arms
-  u(ctx, 5, 23, 5, 13, suit, 4);
-  u(ctx, 4, 33, 6, 4, paper, 4);
-  u(ctx, 35, 23, 5, 12, suit, 4);
-  u(ctx, 35, 32, 6, 4, paper, 4);
-  u(ctx, 37, 30, 4, 1, dark, 4);
-  u(ctx, 38, 31, 1, 3, neon, 4);
+  // onesie body
+  u(ctx, 14, 23, 18, 19, dark, 4);
+  u(ctx, 15, 24, 16, 17, paper, 4);
+  u(ctx, 15, 24, 2, 17, paperShade, 4);
+  u(ctx, 29, 24, 2, 17, paperShade, 4);
+  u(ctx, 17, 38, 13, 2, rustDark, 4);
+  u(ctx, 22, 36, 2, 3, rust, 4);
 
-  // TV head
-  u(ctx, 10, 4, 25, 18, dark, 4);
-  u(ctx, 12, 6, 21, 14, '#0f1a17', 4);
-  u(ctx, 13, 7, 19, 12, '#18312c', 4);
+  // delivery-label bib
+  u(ctx, 16, 24, 14, 10, dark, 4);
+  u(ctx, 17, 25, 12, 8, '#f3ead7', 4);
+  u(ctx, 17, 25, 12, 2, warning, 4);
+  u(ctx, 18, 28, 8, 1, paperDeep, 4);
+  u(ctx, 18, 30, 5, 1, paperDeep, 4);
+  u(ctx, 26, 29, 2, 4, dark, 4);
+  u(ctx, 17, 33, 10, 1, dark, 4);
+  u(ctx, 17, 26, 1, 1, rust, 4);
 
-  // screen static
-  const bars = [1, 0.4, 0.8, 0.2, 0.65, 1, 0.5, 0.9];
-  bars.forEach((alpha, i) => {
-    ctx.fillStyle = `rgba(75,227,200,${alpha * 0.22})`;
-    ctx.fillRect(13 * 4, (7 + i * 1.5) * 4, 19 * 4, 2);
-  });
+  // giant sealing stamp hugged in front, wider than the head
+  u(ctx, 7, 31, 31, 18, dark, 4);
+  u(ctx, 9, 32, 27, 15, rustDark, 4);
+  u(ctx, 10, 33, 25, 2, rust, 4);
+  u(ctx, 10, 45, 25, 1, '#3a1710', 4);
+  u(ctx, 12, 36, 21, 8, '#7d2a1a', 4);
+  u(ctx, 14, 37, 17, 6, '#5c1e13', 4);
+  u(ctx, 16, 38, 13, 1, paperDeep, 4);
+  u(ctx, 16, 40, 13, 1, paperDeep, 4);
+  u(ctx, 22, 37, 1, 6, rust, 4);
+  u(ctx, 19, 36, 2, 2, warning, 4);
+  u(ctx, 29, 45, 3, 2, warning, 4);
+  u(ctx, 7, 33, 2, 2, paperDeep, 4);
+  u(ctx, 36, 33, 2, 2, paperDeep, 4);
 
-  // screen face: two eye bars + flat mouth
-  u(ctx, 15, 10, 5, 2, neon, 4);
-  u(ctx, 25, 10, 5, 2, neon, 4);
-  u(ctx, 15, 14, 15, 1, paper, 4);
-  u(ctx, 18, 15, 2, 1, paper, 4);
-  u(ctx, 21, 15, 2, 1, paper, 4);
-  u(ctx, 24, 15, 2, 1, paper, 4);
+  // arms and hands gripping the stamp edges
+  u(ctx, 11, 28, 5, 10, paper, 4);
+  u(ctx, 11, 28, 1, 10, paperShade, 4);
+  u(ctx, 31, 28, 5, 10, paper, 4);
+  u(ctx, 35, 28, 1, 10, paperShade, 4);
+  u(ctx, 8, 35, 4, 4, paper, 4);
+  u(ctx, 36, 35, 4, 4, paper, 4);
+  u(ctx, 8, 38, 1, 1, rust, 4);
+  u(ctx, 39, 38, 1, 1, rust, 4);
 
-  // crack
-  u(ctx, 26, 7, 1, 4, '#e9dfc8', 4);
-  u(ctx, 27, 10, 2, 1, '#e9dfc8', 4);
-  u(ctx, 28, 11, 1, 3, paper, 4);
-  u(ctx, 29, 13, 2, 1, paper, 4);
+  // oversized baby head
+  u(ctx, 9, 4, 26, 21, dark, 4);
+  u(ctx, 10, 5, 24, 19, paper, 4);
+  u(ctx, 10, 5, 24, 2, '#f5ecd8', 4);
+  u(ctx, 10, 22, 24, 2, paperShade, 4);
+  u(ctx, 31, 7, 3, 10, paperShade, 4);
 
-  // antenna
-  u(ctx, 32, 1, 1, 4, dark, 4);
-  u(ctx, 30, 0, 4, 1, dark, 4);
-  u(ctx, 33, 0, 1, 1, warning, 4);
+  // printer scar and bolts
+  u(ctx, 11, 17, 4, 1, paperDeep, 4);
+  u(ctx, 30, 18, 3, 2, ink, 4);
+  u(ctx, 30, 18, 1, 1, warning, 4);
 
-  // side "camera" shoulders
-  u(ctx, 7, 18, 3, 6, dark, 4);
-  u(ctx, 34, 18, 3, 6, dark, 4);
-  u(ctx, 8, 19, 1, 2, rust, 4);
-  u(ctx, 35, 19, 1, 2, rust, 4);
+  // brows, eyes, cheeks
+  u(ctx, 14, 11, 6, 1, rustDark, 4);
+  u(ctx, 26, 11, 6, 1, rustDark, 4);
+  u(ctx, 14, 13, 6, 5, dark, 4);
+  u(ctx, 26, 13, 6, 5, dark, 4);
+  u(ctx, 15, 14, 4, 3, '#f7f1e4', 4);
+  u(ctx, 27, 14, 4, 3, '#f7f1e4', 4);
+  u(ctx, 17, 14, 2, 3, dark, 4);
+  u(ctx, 29, 14, 2, 3, dark, 4);
+  u(ctx, 17, 14, 1, 1, neon, 4);
+  u(ctx, 29, 14, 1, 1, neon, 4);
+  u(ctx, 13, 18, 3, 1, rust, 4);
+  u(ctx, 30, 18, 3, 1, rust, 4);
 
-  // badge
-  u(ctx, 28, 26, 3, 2, warning, 4);
-  u(ctx, 29, 28, 2, 1, paper, 4);
+  // solemn little mouth
+  u(ctx, 20, 20, 5, 1, ink, 4);
+  u(ctx, 21, 21, 3, 1, paperShade, 4);
+
+  // paper feed slot behind one ear
+  u(ctx, 34, 9, 3, 5, ink, 4);
+  u(ctx, 35, 10, 1, 3, dark, 4);
+  u(ctx, 34, 9, 3, 1, warning, 4);
+
+  // loose label hanging at the side
+  u(ctx, 31, 24, 5, 3, paper, 4);
+  u(ctx, 32, 25, 1, 1, dark, 4);
+  u(ctx, 34, 25, 1, 1, dark, 4);
 }
 
 function drawBossGlitch(ctx: Ctx): void {

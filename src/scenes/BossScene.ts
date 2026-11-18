@@ -11,7 +11,7 @@ import {
 } from '../config/balance';
 import { COLORS, CSS, FONTS, TEX } from '../config/theme';
 import { STRINGS } from '../data';
-import type { BossAttackId, BossPhase, ResultPayload, RunState } from '../types/game';
+import type { BossAttackId, BossPhase, BossSpecialId, ResultPayload, RunState } from '../types/game';
 import {
   addFloatingLine,
   addHotTag,
@@ -37,6 +37,13 @@ import { audio } from '../systems/AudioSystem';
 const BOSS_HOVER_X = 930;
 const BOSS_HOVER_Y = 500;
 const DASH_Y = 520;
+
+/** 萝卜舞台：构图目标——阿浣在左、萝卜居中、Boss 在右。 */
+const STAGE_RADISH_X = 640;
+const STAGE_GROUND_Y = 636;
+/** 演出压暗层（在背景之上、角色之下）与演出道具层（在角色之上、答题层之下）。 */
+const STAGE_DIM_DEPTH = 12;
+const STAGE_PROP_DEPTH = 60;
 
 export class BossScene extends Phaser.Scene {
   private run!: RunState;
@@ -67,6 +74,12 @@ export class BossScene extends Phaser.Scene {
   private pendingPhase: BossPhase | null = null;
   private pendingReason = '网络热度归零';
   private cardsChangedHandler: (() => void) | null = null;
+  /** 认梗招式的舞台演出：压暗层与道具层分开管理，方便压暗背景但保住角色可读。 */
+  private specialDim: Phaser.GameObjects.Container | null = null;
+  private specialProps: Phaser.GameObjects.Container | null = null;
+  private specialStampView: Phaser.GameObjects.Container | null = null;
+  private specialRobot: Phaser.GameObjects.Container | null = null;
+  private specialEpoch = 0;
 
   constructor() {
     super('Boss');
@@ -90,6 +103,11 @@ export class BossScene extends Phaser.Scene {
     this.ally = null;
     this.quizOverlay = null;
     this.cardsChangedHandler = null;
+    this.specialDim = null;
+    this.specialProps = null;
+    this.specialStampView = null;
+    this.specialRobot = null;
+    this.specialEpoch = 0;
 
     this.run = getRunState(this);
     if (this.run.hp <= 0) {
@@ -825,15 +843,22 @@ export class BossScene extends Phaser.Scene {
     this.boss.setTint(COLORS.neon);
     this.pendingCardId = null;
     const phase = this.boss.getPhaseConfig();
-    const prepared = this.quizSystem.prepareParry(phase.parryQuestionId);
-    const specialTag = addHotTag(
-      this,
-      this.boss.x,
-      this.boss.y - 170,
-      '特殊招式 · 认梗弹反',
-      COLORS.rust,
-      -0.02,
-    );
+    const special = phase.special ?? null;
+    this.showSpecialTag(special);
+    audio.play('stagger');
+    if (special === 'radish_stamping') {
+      this.performRadishSpecial(phase);
+    } else {
+      this.openParryQuiz(phase);
+    }
+  }
+
+  private showSpecialTag(special: BossSpecialId | null): void {
+    const label =
+      special === 'radish_stamping'
+        ? '特殊招式 · 新品自动分类'
+        : STRINGS.boss.specialPrompt;
+    const specialTag = addHotTag(this, this.boss.x, this.boss.y - 170, label, COLORS.rust, -0.02);
     specialTag.setDepth(97);
     this.tweens.add({
       targets: specialTag,
@@ -842,7 +867,11 @@ export class BossScene extends Phaser.Scene {
       duration: 380,
       onComplete: () => specialTag.destroy(),
     });
-    audio.play('stagger');
+  }
+
+  /** 认梗弹反答题层：演出结束后打开，逻辑与旧版一致，仅把答对的演出外挂出去。 */
+  private openParryQuiz(phase: BossPhase): void {
+    const prepared = this.quizSystem.prepareParry(phase.parryQuestionId);
     this.quizOverlay = new QuizOverlay(this, {
       mode: 'parry',
       prepared,
@@ -860,6 +889,7 @@ export class BossScene extends Phaser.Scene {
             this.hud.toast(STRINGS.toasts.burst, 'neon');
           }
           this.pendingCardId = prepared.question.cardId;
+          this.playSpecialSuccessFx(phase.special ?? null);
           this.boss.takeDamage(BOSS.reflectDamage);
           this.boss.setStagger(phase.staggerMs);
           this.clearBossProjectiles();
@@ -889,6 +919,7 @@ export class BossScene extends Phaser.Scene {
       onClose: () => {
         this.quizOverlay = null;
         this.parryActive = false;
+        this.clearSpecialStage(600);
         if (this.finished) {
           return;
         }
@@ -909,6 +940,367 @@ export class BossScene extends Phaser.Scene {
         }
       },
     });
+  }
+
+  /**
+   * 「萝卜盖章 · 又是类魂」三拍演出的前两拍：看懂笑点 → 作出判断。
+   * 全程原创像素绘制：浇水机器人、白萝卜、巨章。答题层打开前给足阅读时间。
+   */
+  private performRadishSpecial(phase: BossPhase): void {
+    const epoch = this.specialEpoch;
+    const dim = this.add.container(0, 0);
+    dim.setDepth(STAGE_DIM_DEPTH);
+    const dimRect = this.add.graphics();
+    dimRect.fillStyle(COLORS.coal, 0.52);
+    dimRect.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    dimRect.setAlpha(0);
+    dim.add(dimRect);
+    const spotlight = this.add.ellipse(STAGE_RADISH_X + 8, 560, 340, 160, COLORS.warning, 0.07);
+    dim.add(spotlight);
+    this.specialDim = dim;
+    this.tweens.add({ targets: dimRect, alpha: 1, duration: 260, ease: 'Sine.easeOut' });
+
+    const props = this.add.container(0, 0);
+    props.setDepth(STAGE_PROP_DEPTH);
+    this.specialProps = props;
+
+    // 构图：把阿浣请到画面左侧，短暂锁控。
+    this.lockPlayerForStage(300);
+    addFloatingLine(this, this.boss.x, this.boss.y - 128, '新品演示：全自动分类！', COLORS.warning, 18, 1700);
+
+    // 第一拍·看懂笑点：萝卜登场 → 机器人浇水 → 开花 → 巨章盖「类魂」→ 巨幕飘字。
+    const radish = this.buildRadish();
+    radish.setPosition(STAGE_RADISH_X, STAGE_GROUND_Y);
+    radish.setScale(0.25);
+    radish.setAlpha(0);
+    props.add(radish);
+
+    const robot = this.buildWaterRobot();
+    robot.setPosition(STAGE_RADISH_X - 190, STAGE_GROUND_Y);
+    props.add(robot);
+    this.specialRobot = robot;
+
+    const stampView = this.buildStageStamp('类魂');
+    stampView.setPosition(STAGE_RADISH_X, 210);
+    props.add(stampView);
+    this.specialStampView = stampView;
+
+    this.time.delayedCall(320, () => {
+      if (epoch !== this.specialEpoch) {
+        return;
+      }
+      audio.play('paper');
+      this.tweens.add({ targets: radish, scale: 1, alpha: 1, duration: 420, ease: 'Back.easeOut' });
+    });
+
+    this.time.delayedCall(760, () => {
+      if (epoch !== this.specialEpoch) {
+        return;
+      }
+      audio.play('select');
+      this.tweens.add({ targets: robot, x: STAGE_RADISH_X - 78, duration: 420, ease: 'Sine.easeOut' });
+    });
+
+    this.time.delayedCall(1220, () => {
+      if (epoch !== this.specialEpoch) {
+        return;
+      }
+      audio.play('spray');
+      this.tweens.add({ targets: robot, angle: { from: 0, to: -14 }, duration: 190, yoyo: true, repeat: 2 });
+      for (let i = 0; i < 7; i += 1) {
+        this.time.delayedCall(i * 90, () => {
+          if (epoch !== this.specialEpoch) {
+            return;
+          }
+          const drop = this.add.circle(STAGE_RADISH_X - 44 + Phaser.Math.Between(-6, 8), 540, 3, COLORS.neon, 0.9);
+          drop.setDepth(STAGE_PROP_DEPTH + 1);
+          this.tweens.add({ targets: drop, y: STAGE_GROUND_Y - 34, duration: 200, onComplete: () => drop.destroy() });
+        });
+      }
+    });
+
+    this.time.delayedCall(1880, () => {
+      if (epoch !== this.specialEpoch) {
+        return;
+      }
+      this.tweens.add({ targets: radish, scale: 1.3, duration: 280, ease: 'Back.easeOut' });
+      pixelBurst(this, STAGE_RADISH_X, 570, COLORS.warning, 8, 0.9);
+      addFloatingLine(this, STAGE_RADISH_X, 528, '萝卜开花了！', COLORS.paper, 15, 950);
+    });
+
+    this.time.delayedCall(2300, () => {
+      if (epoch !== this.specialEpoch) {
+        return;
+      }
+      this.tweens.add({ targets: stampView, y: 572, duration: 430, ease: 'Cubic.easeIn' });
+    });
+
+    this.time.delayedCall(2730, () => {
+      if (epoch !== this.specialEpoch) {
+        return;
+      }
+      audio.play('stampThud');
+      this.cameras.main.shake(110, 0.006);
+      pixelBurst(this, STAGE_RADISH_X, 584, COLORS.paper, 7, 0.8);
+      this.tweens.add({ targets: radish, scaleX: 1.18, scaleY: 0.88, duration: 90, yoyo: true });
+    });
+
+    this.time.delayedCall(3010, () => {
+      if (epoch !== this.specialEpoch) {
+        return;
+      }
+      const banner = glitchText(this, -180, 250, '又是类魂', {
+        fontFamily: FONTS.display,
+        fontSize: '46px',
+        color: CSS.warning,
+        fontStyle: 'bold',
+      });
+      banner.setDepth(STAGE_PROP_DEPTH + 3);
+      this.tweens.add({
+        targets: banner,
+        x: GAME_WIDTH + 180,
+        duration: 1650,
+        ease: 'Linear',
+        onComplete: () => banner.destroy(),
+      });
+    });
+
+    // 第二拍·作出判断：章口转向阿浣，萝卜身上的「类魂」标签保留可读。
+    this.time.delayedCall(3260, () => {
+      if (epoch !== this.specialEpoch) {
+        return;
+      }
+      const label = stamp(this, STAGE_RADISH_X, 566, '类魂', {
+        color: COLORS.rust,
+        fontSize: 20,
+        angle: -0.1,
+        alpha: 0.95,
+      });
+      label.setScale(0.2);
+      this.tweens.add({ targets: label, scale: 1, duration: 180, ease: 'Back.easeOut' });
+      props.add(label);
+      const targetX = Phaser.Math.Clamp(this.player.x, 220, 460);
+      this.tweens.add({
+        targets: stampView,
+        x: targetX,
+        y: 322,
+        angle: -16,
+        duration: 480,
+        ease: 'Cubic.easeInOut',
+      });
+    });
+
+    this.time.delayedCall(3880, () => {
+      if (epoch !== this.specialEpoch || this.finished) {
+        return;
+      }
+      this.releasePlayerFromStage();
+      this.openParryQuiz(phase);
+    });
+  }
+
+  /** 答对后的第三拍·享受反击：印章飞回 Boss 额头，机器人把他认成“待浇水作物”。 */
+  private playRadishCounterFx(): void {
+    const stampView = this.specialStampView;
+    if (stampView && stampView.active) {
+      this.tweens.add({
+        targets: stampView,
+        x: this.boss.x,
+        y: this.boss.y - 96,
+        angle: -8,
+        duration: 240,
+        ease: 'Cubic.easeOut',
+        onComplete: () => {
+          if (!stampView.active) {
+            return;
+          }
+          audio.play('stampThud');
+          pixelBurst(this, this.boss.x, this.boss.y - 90, COLORS.warning, 8, 0.9);
+        },
+      });
+    }
+
+    const forehead = stamp(this, BOSS_HOVER_X, BOSS_HOVER_Y - 96, '类魂', {
+      color: COLORS.rust,
+      fontSize: 24,
+      angle: -0.12,
+      alpha: 0.95,
+    });
+    forehead.setDepth(122);
+    forehead.setScale(1.9);
+    this.tweens.add({ targets: forehead, scale: 1, duration: 200, ease: 'Back.easeOut' });
+    this.time.delayedCall(BOSS.staggerMs, () => {
+      this.tweens.add({
+        targets: forehead,
+        alpha: 0,
+        duration: 420,
+        onComplete: () => forehead.destroy(true),
+      });
+    });
+
+    const robot = this.specialRobot;
+    if (robot && robot.active) {
+      this.tweens.add({ targets: robot, x: this.boss.x - 130, duration: 640, ease: 'Sine.easeInOut' });
+      this.time.delayedCall(660, () => {
+        if (!robot.active) {
+          return;
+        }
+        audio.play('spray');
+        this.tweens.add({ targets: robot, angle: { from: 0, to: -18 }, duration: 200, yoyo: true, repeat: 2 });
+        for (let i = 0; i < 6; i += 1) {
+          this.time.delayedCall(i * 80, () => {
+            if (!robot.active) {
+              return;
+            }
+            const drop = this.add.circle(this.boss.x - 70 + Phaser.Math.Between(-8, 8), this.boss.y - 92, 3, COLORS.neon, 0.9);
+            drop.setDepth(STAGE_PROP_DEPTH + 1);
+            this.tweens.add({ targets: drop, y: this.boss.y + 26, duration: 240, onComplete: () => drop.destroy() });
+          });
+        }
+        addFloatingLine(this, this.boss.x, this.boss.y - 152, '识别失败：待浇水作物', COLORS.neon, 16, 1500);
+      });
+    }
+  }
+
+  private playSpecialSuccessFx(special: BossSpecialId | null): void {
+    if (special === 'radish_stamping') {
+      this.playRadishCounterFx();
+    }
+  }
+
+  /** 演出期短暂锁控并把阿浣请到舞台左侧（目标构图）。 */
+  private lockPlayerForStage(targetX: number): void {
+    this.player.setControlEnabled(false);
+    this.touch?.setEnabled(false);
+    this.player.setFlipX(false);
+    const body = this.player.body as Phaser.Physics.Arcade.Body;
+    if (Math.abs(this.player.x - targetX) > 30) {
+      body.enable = false;
+      this.tweens.add({ targets: this.player, x: targetX, duration: 620, ease: 'Sine.easeInOut' });
+      this.time.delayedCall(650, () => {
+        body.enable = true;
+        if (this.player.active) {
+          this.player.setVelocity(0, 0);
+        }
+      });
+    }
+  }
+
+  private releasePlayerFromStage(): void {
+    if (this.finished) {
+      return;
+    }
+    this.player.setControlEnabled(true);
+    this.touch?.setEnabled(true);
+  }
+
+  /** 收掉舞台演出层；fadeMs 为 0 时立刻销毁。 */
+  private clearSpecialStage(fadeMs: number): void {
+    this.specialEpoch += 1;
+    const dim = this.specialDim;
+    const props = this.specialProps;
+    this.specialDim = null;
+    this.specialProps = null;
+    this.specialStampView = null;
+    this.specialRobot = null;
+    if (fadeMs <= 0) {
+      dim?.destroy(true);
+      props?.destroy(true);
+      return;
+    }
+    if (dim) {
+      this.tweens.add({ targets: dim, alpha: 0, duration: fadeMs, onComplete: () => dim.destroy(true) });
+    }
+    if (props) {
+      this.tweens.add({ targets: props, alpha: 0, duration: fadeMs, onComplete: () => props.destroy(true) });
+    }
+  }
+
+  /** 白萝卜：原创像素绘制，坐标原点在根部（箱顶）。 */
+  private buildRadish(): Phaser.GameObjects.Container {
+    const root = this.add.container(0, 0);
+    const g = this.add.graphics();
+    // 种植箱
+    g.fillStyle(COLORS.coal, 1);
+    g.fillRect(-32, -22, 64, 22);
+    g.fillStyle(COLORS.warning, 0.85);
+    g.fillRect(-32, -22, 64, 4);
+    g.lineStyle(2, COLORS.coalFaint, 0.8);
+    g.strokeRect(-32, -22, 64, 22);
+    // 萝卜身（米白）
+    g.fillStyle(COLORS.white, 1);
+    g.fillEllipse(0, -52, 34, 44);
+    g.fillTriangle(-13, -42, 13, -42, 0, -24);
+    // 阴影条纹
+    g.fillStyle(COLORS.paperDim, 0.7);
+    g.fillRect(-10, -62, 4, 22);
+    g.fillRect(3, -58, 3, 16);
+    // 叶子（嫩绿）
+    g.fillStyle(COLORS.glitch, 1);
+    g.fillTriangle(-4, -72, -22, -92, -2, -74);
+    g.fillTriangle(0, -74, 6, -98, 5, -72);
+    g.fillTriangle(4, -72, 24, -88, 7, -70);
+    g.fillStyle(COLORS.coal, 0.35);
+    g.fillRect(-1, -74, 2, 8);
+    root.add(g);
+    return root;
+  }
+
+  /** 浇水机器人：原创像素绘制，坐标原点在轮子着地点。 */
+  private buildWaterRobot(): Phaser.GameObjects.Container {
+    const root = this.add.container(0, 0);
+    const g = this.add.graphics();
+    // 轮子
+    g.fillStyle(COLORS.coal, 1);
+    g.fillCircle(0, -8, 9);
+    g.fillStyle(COLORS.paperDim, 0.9);
+    g.fillCircle(0, -8, 3);
+    // 身体
+    g.fillStyle(COLORS.coalSoft, 1);
+    g.fillRect(-20, -46, 40, 34);
+    g.lineStyle(2, COLORS.coal, 1);
+    g.strokeRect(-20, -46, 40, 34);
+    // 胸口指示灯
+    g.fillStyle(COLORS.warning, 0.95);
+    g.fillRect(-14, -40, 28, 6);
+    // 眼睛
+    g.fillStyle(COLORS.neon, 1);
+    g.fillRect(4, -36, 8, 6);
+    // 水壶嘴（朝右上方）
+    g.fillStyle(COLORS.paper, 1);
+    g.fillRect(14, -44, 22, 6);
+    g.fillStyle(COLORS.paperDim, 1);
+    g.fillTriangle(36, -44, 44, -52, 36, -38);
+    root.add(g);
+    return root;
+  }
+
+  /** 巨章：原创像素绘制，章面写大字，落章可读。 */
+  private buildStageStamp(text: string): Phaser.GameObjects.Container {
+    const root = this.add.container(0, 0);
+    const g = this.add.graphics();
+    // 握柄
+    g.fillStyle(COLORS.coalFaint, 1);
+    g.fillRect(-7, -58, 14, 26);
+    g.fillRect(-22, -38, 44, 10);
+    // 章体
+    g.fillStyle(COLORS.rustDark, 1);
+    g.fillRect(-56, -18, 112, 34);
+    g.lineStyle(3, COLORS.coal, 1);
+    g.strokeRect(-56, -18, 112, 34);
+    // 章面
+    g.fillStyle(COLORS.rust, 1);
+    g.fillRect(-50, -13, 100, 24);
+    root.add(g);
+    const label = this.add.text(0, -1, text, {
+      fontFamily: FONTS.display,
+      fontSize: '20px',
+      color: CSS.white,
+      fontStyle: 'bold',
+    });
+    label.setOrigin(0.5);
+    root.add(label);
+    return root;
   }
 
   private spawnParryBurst(): void {
@@ -1032,6 +1424,7 @@ export class BossScene extends Phaser.Scene {
     this.player.setControlEnabled(false);
     this.touch?.setEnabled(false);
     this.clearBossProjectiles();
+    this.clearSpecialStage(0);
     if (this.parryActive) {
       this.quizOverlay?.cancel();
       this.parryActive = false;
@@ -1100,6 +1493,7 @@ export class BossScene extends Phaser.Scene {
     this.player.setControlEnabled(false);
     this.touch?.setEnabled(false);
     this.clearBossProjectiles();
+    this.clearSpecialStage(0);
     if (this.parryActive) {
       this.quizOverlay?.cancel();
       this.parryActive = false;
@@ -1178,6 +1572,7 @@ export class BossScene extends Phaser.Scene {
       this.events.off('cards-changed', this.cardsChangedHandler);
       this.cardsChangedHandler = null;
     }
+    this.clearSpecialStage(0);
     this.quizOverlay = null;
   }
 }

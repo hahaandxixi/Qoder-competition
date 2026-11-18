@@ -1,5 +1,11 @@
 export type QuestionMode = 'parry' | 'door';
 
+/** 答题期间保留在画面上的小票/面单，给玩家提供梗的线索。 */
+export interface QuestionSlip {
+  title: string;
+  lines: string[];
+}
+
 export interface Question {
   id: string;
   mode: QuestionMode;
@@ -10,6 +16,10 @@ export interface Question {
   hints: string[];
   cardId: string;
   tags: string[];
+  /** 答对时盖下的印章文案（缺省用门/弹反的通用文案）。 */
+  correctStamp?: string;
+  /** 作答期间常驻的小票（面单、取件条等）。 */
+  slip?: QuestionSlip;
 }
 
 export type CardEffectId =
@@ -35,6 +45,9 @@ export interface CardDef {
 
 export type BossAttackId = 'dash_combo' | 'aimed_shots' | 'data_rain' | 'red_carpet_dash';
 
+/** Boss 认梗弹反的专属舞台演出：答题前先演一段看得懂的招式。 */
+export type BossSpecialId = 'radish_stamping' | 'auto_signing';
+
 export interface BossPhase {
   phase: number;
   fromHpPct: number;
@@ -43,6 +56,7 @@ export interface BossPhase {
   attackPool: BossAttackId[];
   staggerMs: number;
   label: string;
+  special?: BossSpecialId;
 }
 
 export interface BossConfig {
@@ -71,7 +85,9 @@ export interface RunState {
   meme: number;
   streak: number;
   cards: string[];
-  doorPassed: boolean;
+  /** 收发室代签门与顶层倒带取件门各自独立，检查点/重试后仍生效。 */
+  door1Passed: boolean;
+  door2Passed: boolean;
   startedAt: number;
   stats: RunStats;
 }

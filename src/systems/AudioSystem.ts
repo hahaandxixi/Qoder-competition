@@ -19,7 +19,12 @@ type SoundName =
   | 'defeat'
   | 'hitBoss'
   | 'stagger'
-  | 'burst';
+  | 'burst'
+  | 'paper'
+  | 'rewind'
+  | 'bell'
+  | 'spray'
+  | 'stampThud';
 
 type AudioContextCtor = typeof AudioContext;
 
@@ -195,6 +200,31 @@ class AudioSystem {
       case 'burst':
         this.arp(now, [523.25, 659.25, 783.99, 1046.5], 0.1, 'square', 0.08);
         this.noise(now, 0.2, 0.05);
+        break;
+      case 'paper':
+        // 吐纸：一段短促的“滋啦”抖纸声。
+        this.noise(now, 0.16, 0.05);
+        this.tone(now, 900, 0.13, 'triangle', 0.03, 320);
+        break;
+      case 'rewind':
+        // 磁带倒带：先升后降的卷带啸叫。
+        this.tone(now, 320, 0.42, 'sawtooth', 0.035, 940);
+        this.tone(now + 0.18, 880, 0.3, 'sawtooth', 0.03, 260);
+        this.noise(now, 0.5, 0.015);
+        break;
+      case 'bell':
+        // 取件铃：双音“叮——叮”。
+        this.tone(now, 1318.5, 0.34, 'sine', 0.08);
+        this.tone(now + 0.14, 1760, 0.42, 'sine', 0.055);
+        break;
+      case 'spray':
+        // 喷壶洒水：细长的气流声。
+        this.noise(now, 0.24, 0.03);
+        break;
+      case 'stampThud':
+        // 印章砸下：低频闷响加一点纸面震动。
+        this.tone(now, 130, 0.16, 'sawtooth', 0.08, 46);
+        this.noise(now, 0.1, 0.05);
         break;
       default:
         break;

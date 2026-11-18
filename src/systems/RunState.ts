@@ -11,7 +11,8 @@ export function createRunState(): RunState {
     meme: 0,
     streak: 0,
     cards: [],
-    doorPassed: false,
+    door1Passed: false,
+    door2Passed: false,
     startedAt: Date.now(),
     stats: {
       correct: 0,
