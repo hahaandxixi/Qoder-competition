@@ -847,18 +847,26 @@ export class LevelScene extends Phaser.Scene {
     };
   }
 
+  private projectileFrom(
+    group: Phaser.Physics.Arcade.Group,
+    objectA: unknown,
+    objectB: unknown,
+  ): Phaser.Physics.Arcade.Image | null {
+    const a = objectA as Phaser.GameObjects.GameObject;
+    const b = objectB as Phaser.GameObjects.GameObject;
+    const target = group.contains(a) ? a : group.contains(b) ? b : null;
+    return target as Phaser.Physics.Arcade.Image | null;
+  }
+
   private setupCollisions(): void {
     this.physics.add.collider(this.player, this.solids);
     this.physics.add.collider(this.enemyGroup, this.solids);
-    this.physics.add.collider(this.bullets, this.solids, (bulletObj) => {
-      const bullet = bulletObj as Phaser.Physics.Arcade.Image;
-      if (bullet.active) {
-        bullet.destroy();
-      }
+    this.physics.add.collider(this.bullets, this.solids, (a, b) => {
+      this.projectileFrom(this.bullets, a, b)?.destroy();
     });
-    this.physics.add.collider(this.enemyBullets, this.solids, (bulletObj) => {
-      const bullet = bulletObj as Phaser.Physics.Arcade.Image;
-      if (bullet.active) {
+    this.physics.add.collider(this.enemyBullets, this.solids, (a, b) => {
+      const bullet = this.projectileFrom(this.enemyBullets, a, b);
+      if (bullet?.active) {
         pixelBurst(this, bullet.x, bullet.y, COLORS.rust, 2, 0.5);
         bullet.destroy();
       }

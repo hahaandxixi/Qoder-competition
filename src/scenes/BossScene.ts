@@ -338,24 +338,32 @@ export class BossScene extends Phaser.Scene {
     liveRight.setDepth(95);
   }
 
+  private projectileFrom(
+    group: Phaser.Physics.Arcade.Group,
+    objectA: unknown,
+    objectB: unknown,
+  ): Phaser.Physics.Arcade.Image | null {
+    const a = objectA as Phaser.GameObjects.GameObject;
+    const b = objectB as Phaser.GameObjects.GameObject;
+    const target = group.contains(a) ? a : group.contains(b) ? b : null;
+    return target as Phaser.Physics.Arcade.Image | null;
+  }
+
   private setupCollisions(): void {
     this.physics.add.collider(this.player, this.floor);
-    this.physics.add.collider(this.bullets, this.floor, (bulletObj) => {
-      const bullet = bulletObj as Phaser.Physics.Arcade.Image;
-      if (bullet.active) {
-        bullet.destroy();
-      }
+    this.physics.add.collider(this.bullets, this.floor, (a, b) => {
+      this.projectileFrom(this.bullets, a, b)?.destroy();
     });
-    this.physics.add.collider(this.bossProjectiles, this.floor, (bulletObj) => {
-      const bullet = bulletObj as Phaser.Physics.Arcade.Image;
-      if (bullet.active) {
+    this.physics.add.collider(this.bossProjectiles, this.floor, (a, b) => {
+      const bullet = this.projectileFrom(this.bossProjectiles, a, b);
+      if (bullet?.active) {
         pixelBurst(this, bullet.x, bullet.y, COLORS.rust, 2, 0.5);
         bullet.destroy();
       }
     });
-    this.physics.add.overlap(this.bullets, this.boss, (bulletObj) => {
-      const bullet = bulletObj as Phaser.Physics.Arcade.Image;
-      if (!bullet.active || this.boss.isDead() || this.finished) {
+    this.physics.add.overlap(this.bullets, this.boss, (a, b) => {
+      const bullet = this.projectileFrom(this.bullets, a, b);
+      if (!bullet || !bullet.active || this.boss.isDead() || this.finished) {
         return;
       }
       const damage = Number(bullet.getData('damage') ?? PLAYER.bulletDamage);
@@ -364,9 +372,9 @@ export class BossScene extends Phaser.Scene {
       pixelBurst(this, bullet.x, bullet.y, COLORS.warning, 3, 0.6);
       bullet.destroy();
     });
-    this.physics.add.overlap(this.bossProjectiles, this.player, (_, projectileObj) => {
-      const projectile = projectileObj as Phaser.Physics.Arcade.Image;
-      if (!projectile.active || this.finished) {
+    this.physics.add.overlap(this.bossProjectiles, this.player, (a, b) => {
+      const projectile = this.projectileFrom(this.bossProjectiles, a, b);
+      if (!projectile || !projectile.active || this.finished) {
         return;
       }
       const damage = Number(projectile.getData('damage') ?? BOSS.projectileDamage);
