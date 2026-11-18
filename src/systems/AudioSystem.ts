@@ -1,5 +1,7 @@
 type MusicMode = 'menu' | 'level' | 'boss' | 'result' | 'none';
 
+type BossDashBeat = 1 | 2 | 3 | 4;
+
 type SoundName =
   | 'jump'
   | 'doubleJump'
@@ -65,6 +67,8 @@ class AudioSystem {
   private step = 0;
   private mode: MusicMode = 'menu';
   private muted = false;
+  private bossDashBus: GainNode | null = null;
+  private bossDashSources: AudioScheduledSourceNode[] = [];
 
   init(muted: boolean): void {
     this.muted = muted;
@@ -235,6 +239,206 @@ class AudioSystem {
       default:
         break;
     }
+  }
+
+  /** 三连残影冲刺的四拍：1 是举章预警，2/3/4 分别贴着三次冲刺启动。 */
+  playBossDashBeat(beat: BossDashBeat): void {
+    if (!this.ctx || !this.master || this.muted || this.ctx.state !== 'running') {
+      return;
+    }
+    try {
+      const now = this.ctx.currentTime;
+      if (beat === 1) {
+        this.stopBossDashCue();
+      }
+      const bus = this.bossDashBus ?? this.createBossDashBus(now);
+      if (!bus) {
+        return;
+      }
+      switch (beat) {
+        case 1:
+          // 章柄磕铁讲台：高频瞬态 + 不和谐金属泛音 + 短低频闷击。
+          this.dashMetal(bus, now, 1174.66, 0.34, 0.11);
+          this.dashTone(bus, now, 196, 0.1, 'triangle', 0.055, 92, 0.003);
+          this.dashNoise(bus, now, 0.055, 0.09, 'highpass', 2500, 1200, 0.7);
+          break;
+        case 2:
+          // 第一段：公章擦过金属导轨，短而亮。
+          this.dashMetal(bus, now, 1396.91, 0.16, 0.055);
+          this.dashTone(bus, now, 880, 0.18, 'sawtooth', 0.045, 380);
+          this.dashNoise(bus, now, 0.2, 0.075, 'bandpass', 2200, 720, 1.4);
+          this.dashTone(bus, now, 180, 0.17, 'triangle', 0.035, 70);
+          break;
+        case 3:
+          // 第二段：同一条导轨，音高略低，保持同一件道具的质感。
+          this.dashMetal(bus, now, 1244.51, 0.18, 0.06);
+          this.dashTone(bus, now, 740, 0.2, 'sawtooth', 0.045, 320);
+          this.dashNoise(bus, now, 0.22, 0.08, 'bandpass', 1900, 620, 1.3);
+          this.dashTone(bus, now, 160, 0.18, 'triangle', 0.038, 62);
+          break;
+        case 4:
+          // 第三段收尾：更厚的低频、更长的金属余响。
+          this.dashMetal(bus, now, 1046.5, 0.62, 0.1);
+          this.dashTone(bus, now, 174, 0.12, 'triangle', 0.07, 78, 0.003);
+          this.dashNoise(bus, now, 0.32, 0.09, 'bandpass', 2400, 520, 1.1);
+          this.dashTone(bus, now, 520, 0.34, 'sawtooth', 0.05, 160, 0.006);
+          break;
+        default:
+          break;
+      }
+    } catch {
+      // Ignore a failed cue; gameplay timing is unaffected.
+    }
+  }
+
+  /** 取消招式或离开场景时，切断这一组四拍尚未结束的余响。 */
+  stopBossDashCue(): void {
+    const bus = this.bossDashBus;
+    const sources = this.bossDashSources;
+    this.bossDashBus = null;
+    this.bossDashSources = [];
+    if (!this.ctx || !bus) {
+      return;
+    }
+    try {
+      const now = this.ctx.currentTime;
+      bus.gain.cancelScheduledValues(now);
+      bus.gain.setTargetAtTime(0.0001, now, 0.012);
+      for (const source of sources) {
+        try {
+          source.stop(now + 0.06);
+        } catch {
+          // A source may already have ended.
+        }
+      }
+      window.setTimeout(() => {
+        try {
+          bus.disconnect();
+        } catch {
+          // The bus may already be disconnected.
+        }
+      }, 140);
+    } catch {
+      // Ignore transient audio graph errors.
+    }
+  }
+
+  private createBossDashBus(now: number): GainNode | null {
+    if (!this.ctx || !this.master) {
+      return null;
+    }
+    const bus = this.ctx.createGain();
+    bus.gain.setValueAtTime(1, now);
+    bus.connect(this.master);
+    this.bossDashBus = bus;
+    this.bossDashSources = [];
+    return bus;
+  }
+
+  private dashMetal(bus: GainNode, start: number, base: number, duration: number, volume: number): void {
+    const partials = [
+      { ratio: 1, level: 0.5, decay: 1 },
+      { ratio: 1.58, level: 0.28, decay: 0.78 },
+      { ratio: 2.38, level: 0.16, decay: 0.56 },
+      { ratio: 3.17, level: 0.09, decay: 0.4 },
+    ];
+    for (const partial of partials) {
+      this.dashTone(
+        bus,
+        start + (partial.ratio === 1 ? 0 : 0.002),
+        base * partial.ratio,
+        duration * partial.decay,
+        'sine',
+        volume * partial.level,
+        undefined,
+        0.003,
+      );
+    }
+  }
+
+  private dashTone(
+    bus: GainNode,
+    start: number,
+    from: number,
+    duration: number,
+    type: OscillatorType,
+    volume: number,
+    to?: number,
+    attack = 0.008,
+  ): void {
+    if (!this.ctx) {
+      return;
+    }
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(from, start);
+    if (to !== undefined) {
+      osc.frequency.exponentialRampToValueAtTime(Math.max(20, to), start + duration);
+    }
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.linearRampToValueAtTime(volume, start + Math.min(attack, duration * 0.5));
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+    osc.connect(gain);
+    gain.connect(bus);
+    this.trackBossDashSource(osc);
+    osc.start(start);
+    osc.stop(start + duration + 0.02);
+  }
+
+  private dashNoise(
+    bus: GainNode,
+    start: number,
+    duration: number,
+    volume: number,
+    filterType: BiquadFilterType,
+    fromFreq: number,
+    toFreq: number,
+    q: number,
+  ): void {
+    if (!this.ctx) {
+      return;
+    }
+    const frames = Math.max(1, Math.floor(this.ctx.sampleRate * duration));
+    const buffer = this.ctx.createBuffer(1, frames, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < frames; i += 1) {
+      data[i] = Math.random() * 2 - 1;
+    }
+    const src = this.ctx.createBufferSource();
+    src.buffer = buffer;
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = filterType;
+    filter.frequency.setValueAtTime(fromFreq, start);
+    filter.frequency.exponentialRampToValueAtTime(Math.max(40, toFreq), start + duration);
+    filter.Q.value = q;
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.linearRampToValueAtTime(volume, start + 0.006);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(bus);
+    this.trackBossDashSource(src);
+    src.start(start);
+    src.stop(start + duration + 0.02);
+  }
+
+  private trackBossDashSource(source: AudioScheduledSourceNode): void {
+    if (!this.bossDashBus) {
+      return;
+    }
+    this.bossDashSources.push(source);
+    source.addEventListener(
+      'ended',
+      () => {
+        const index = this.bossDashSources.indexOf(source);
+        if (index >= 0) {
+          this.bossDashSources.splice(index, 1);
+        }
+      },
+      { once: true },
+    );
   }
 
   private tone(

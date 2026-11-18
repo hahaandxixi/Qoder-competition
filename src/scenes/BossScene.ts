@@ -904,6 +904,7 @@ export class BossScene extends Phaser.Scene {
       floatText: (x, y, text, color) => addFloatingLine(this, x, y, text, color ?? COLORS.warning, 17),
       onPhaseReached: (phase) => this.handlePhaseReached(phase),
       onStaggered: () => {
+        audio.stopBossDashCue();
         this.attackEpoch += 1;
         this.attackBusy = false;
         this.bossDashing = false;
@@ -972,6 +973,7 @@ export class BossScene extends Phaser.Scene {
     if (this.finished || this.boss.isDead()) {
       return false;
     }
+    audio.stopBossDashCue();
     this.attackEpoch += 1;
     this.attackBusy = false;
     this.bossDashing = false;
@@ -1113,6 +1115,9 @@ export class BossScene extends Phaser.Scene {
       19,
       1100,
     );
+    if (!redCarpet) {
+      audio.playBossDashBeat(1);
+    }
     if (redCarpet) {
       const carpet = this.add.graphics();
       carpet.setDepth(5);
@@ -1149,6 +1154,7 @@ export class BossScene extends Phaser.Scene {
     const startX = this.player.x > GAME_WIDTH / 2 ? 240 : GAME_WIDTH - 240;
     this.boss.setPosition(startX, DASH_Y);
     this.spawnAfterimage();
+    let launched = 0;
 
     const dashStep = (remaining: number): void => {
       if (this.finished || epoch !== this.attackEpoch || this.boss.isDead()) {
@@ -1162,6 +1168,10 @@ export class BossScene extends Phaser.Scene {
       const direction = this.player.x >= this.boss.x ? 1 : -1;
       this.boss.setVelocityX(direction * BOSS.dashSpeed);
       this.bossDashing = true;
+      if (!redCarpet) {
+        launched += 1;
+        audio.playBossDashBeat(launched === 1 ? 2 : launched === 2 ? 3 : 4);
+      }
       this.boss.setAngle(this.boss.angle + direction * 5);
       this.spawnAfterimage();
       this.time.delayedCall(400, () => {
@@ -1235,6 +1245,7 @@ export class BossScene extends Phaser.Scene {
     if (this.finished || this.parryActive || this.parryUsedThisPhase || this.boss.isDead()) {
       return;
     }
+    audio.stopBossDashCue();
     this.parryUsedThisPhase = true;
     this.parryActive = true;
     this.attackEpoch += 1;
@@ -1945,6 +1956,7 @@ export class BossScene extends Phaser.Scene {
     if (this.finished) {
       return;
     }
+    audio.stopBossDashCue();
     this.attackEpoch += 1;
     this.attackBusy = false;
     this.bossDashing = false;
@@ -2006,6 +2018,7 @@ export class BossScene extends Phaser.Scene {
     if (this.finished) {
       return;
     }
+    audio.stopBossDashCue();
     this.finished = true;
     this.fightStarted = false;
     this.attackEpoch += 1;
@@ -2074,6 +2087,7 @@ export class BossScene extends Phaser.Scene {
     if (this.finished) {
       return;
     }
+    audio.stopBossDashCue();
     this.finished = true;
     this.fightStarted = false;
     this.attackEpoch += 1;
@@ -2158,6 +2172,7 @@ export class BossScene extends Phaser.Scene {
   }
 
   private cleanupScene(): void {
+    audio.stopBossDashCue();
     if (this.cardsChangedHandler) {
       this.events.off('cards-changed', this.cardsChangedHandler);
       this.cardsChangedHandler = null;
