@@ -43,10 +43,17 @@ export interface CardDef {
   color: string;
 }
 
-export type BossAttackId = 'dash_combo' | 'aimed_shots' | 'data_rain' | 'red_carpet_dash';
+export type BossAttackId =
+  | 'dash_combo'
+  | 'aimed_shots'
+  | 'data_rain'
+  | 'red_carpet_dash'
+  | 'viewfinder_net'
+  | 'gear_toss'
+  | 'canopy_leak';
 
 /** Boss 认梗弹反的专属舞台演出：答题前先演一段看得懂的招式。 */
-export type BossSpecialId = 'radish_stamping' | 'auto_signing';
+export type BossSpecialId = 'radish_stamping' | 'auto_signing' | 'road_sign_drag' | 'canopy_rain';
 
 export interface BossPhase {
   phase: number;
@@ -85,9 +92,14 @@ export interface RunState {
   meme: number;
   streak: number;
   cards: string[];
+  /** 当前幕。第一幕与第二幕的门状态、出生点和重试路由互相独立。 */
+  act: 1 | 2;
   /** 收发室代签门与顶层倒带取件门各自独立，检查点/重试后仍生效。 */
   door1Passed: boolean;
   door2Passed: boolean;
+  /** 荒野岛的亡命天涯门与这是好事呀门。 */
+  act2Door1Passed: boolean;
+  act2Door2Passed: boolean;
   startedAt: number;
   stats: RunStats;
 }
@@ -100,7 +112,9 @@ export interface BestRecord {
 }
 
 export interface ResultPayload {
+  act: 1 | 2;
   victory: boolean;
+  temporary?: boolean;
   timeMs: number;
   stats: RunStats;
   cards: string[];

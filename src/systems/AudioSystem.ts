@@ -27,7 +27,15 @@ type SoundName =
   | 'bell'
   | 'spray'
   | 'stampThud'
-  | 'scan';
+  | 'scan'
+  | 'droneFocus'
+  | 'shutter'
+  | 'canClink'
+  | 'ropeTension'
+  | 'waterDrip'
+  | 'netDrop'
+  | 'gearToss'
+  | 'signScrape';
 
 type AudioContextCtor = typeof AudioContext;
 
@@ -235,6 +243,52 @@ class AudioSystem {
         // 旧扫码枪：一声干脆的“滴”。
         this.tone(now, 1480, 0.09, 'square', 0.055, 1420);
         this.tone(now + 0.085, 1180, 0.16, 'sine', 0.045, 1160);
+        break;
+      case 'droneFocus':
+        // 无人机对焦：细窄的升调，不和第一幕的金属章重样。
+        this.tone(now, 520, 0.28, 'triangle', 0.035, 1280);
+        this.tone(now + 0.11, 760, 0.22, 'sine', 0.025, 1760);
+        this.noise(now, 0.18, 0.012);
+        break;
+      case 'shutter':
+        // 快门：两下短促的机械“咔”。
+        this.noise(now, 0.035, 0.045);
+        this.tone(now, 2100, 0.028, 'square', 0.035, 1700);
+        this.noise(now + 0.11, 0.045, 0.035);
+        this.tone(now + 0.11, 1800, 0.035, 'square', 0.028, 1400);
+        break;
+      case 'canClink':
+        // 空罐轻响：薄铁皮，比甄领先的方章轻。
+        this.tone(now, 1568, 0.09, 'sine', 0.035, 1530);
+        this.tone(now + 0.025, 2093, 0.06, 'triangle', 0.02, 2000);
+        this.noise(now, 0.035, 0.025);
+        break;
+      case 'ropeTension':
+        // 缆绳绷紧：低频吱呀加一点纤维摩擦。
+        this.tone(now, 150, 0.38, 'sawtooth', 0.035, 86);
+        this.tone(now + 0.08, 96, 0.3, 'triangle', 0.03, 62);
+        this.noise(now, 0.28, 0.022);
+        break;
+      case 'waterDrip':
+        // 水滴：一声清亮的小回弹。
+        this.tone(now, 920, 0.07, 'sine', 0.025, 620);
+        this.tone(now + 0.055, 540, 0.12, 'sine', 0.018, 400);
+        break;
+      case 'netDrop':
+        // 补给网落下：布面兜风的沙沙声和落地闷响。
+        this.noise(now, 0.3, 0.05);
+        this.tone(now + 0.18, 120, 0.2, 'triangle', 0.04, 58);
+        break;
+      case 'gearToss':
+        // 营地器材被抛出：短促的塑料/金属擦风。
+        this.tone(now, 460, 0.16, 'sawtooth', 0.035, 140);
+        this.noise(now, 0.12, 0.025);
+        break;
+      case 'signScrape':
+        // 路牌拖地：偏中频的刮擦，不和四拍金属预警混淆。
+        this.tone(now, 360, 0.22, 'sawtooth', 0.03, 690);
+        this.noise(now, 0.24, 0.035);
+        this.tone(now + 0.08, 220, 0.25, 'triangle', 0.02, 120);
         break;
       default:
         break;

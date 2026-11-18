@@ -6,6 +6,8 @@ import { BootScene } from './scenes/BootScene';
 import { MenuScene } from './scenes/MenuScene';
 import { LevelScene } from './scenes/LevelScene';
 import { BossScene } from './scenes/BossScene';
+import { IslandScene } from './scenes/IslandScene';
+import { WastelandBossScene } from './scenes/WastelandBossScene';
 import { ResultScene } from './scenes/ResultScene';
 import { CreditsScene } from './scenes/CreditsScene';
 
@@ -32,7 +34,16 @@ const config: Phaser.Types.Core.GameConfig = {
       debug: false,
     },
   },
-  scene: [BootScene, MenuScene, LevelScene, BossScene, ResultScene, CreditsScene],
+  scene: [
+    BootScene,
+    MenuScene,
+    LevelScene,
+    BossScene,
+    IslandScene,
+    WastelandBossScene,
+    ResultScene,
+    CreditsScene,
+  ],
 };
 
 interface DebugWindow extends Window {

@@ -11,8 +11,11 @@ export function createRunState(): RunState {
     meme: 0,
     streak: 0,
     cards: [],
+    act: 1,
     door1Passed: false,
     door2Passed: false,
+    act2Door1Passed: false,
+    act2Door2Passed: false,
     startedAt: Date.now(),
     stats: {
       correct: 0,
@@ -25,9 +28,24 @@ export function createRunState(): RunState {
   };
 }
 
+/** 第一幕结算进入荒野岛：保留卡组与统计，重置本幕生命、梗浓度和门状态。 */
+export function beginAct2(scene: Phaser.Scene): RunState {
+  const run = getRunState(scene);
+  run.act = 2;
+  run.hp = PLAYER.maxHp;
+  run.meme = 0;
+  run.streak = 0;
+  run.act2Door1Passed = false;
+  run.act2Door2Passed = false;
+  return run;
+}
+
 export function getRunState(scene: Phaser.Scene): RunState {
   const stored = scene.registry.get(RUN_KEY) as RunState | undefined;
   if (stored && typeof stored.hp === 'number' && Array.isArray(stored.cards)) {
+    stored.act = stored.act === 2 ? 2 : 1;
+    stored.act2Door1Passed = stored.act2Door1Passed === true;
+    stored.act2Door2Passed = stored.act2Door2Passed === true;
     return stored;
   }
   const run = createRunState();

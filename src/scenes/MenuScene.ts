@@ -358,6 +358,7 @@ export class MenuScene extends Phaser.Scene {
     audio.setMusic('level');
     resetRunState(this);
     this.registry.remove('bossIntroSeen');
+    this.registry.remove('act2IntroSeen');
     this.input.enabled = false;
     this.cameras.main.fadeOut(260, 23, 19, 16);
     this.time.delayedCall(280, () => this.scene.start('Level'));

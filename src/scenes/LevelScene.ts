@@ -154,6 +154,7 @@ export class LevelScene extends Phaser.Scene {
     this.lastRunDust = 0;
 
     this.run = getRunState(this);
+    this.run.act = 1;
     if (this.run.hp <= 0) {
       this.run.hp = PLAYER.maxHp;
     }
@@ -1847,6 +1848,7 @@ export class LevelScene extends Phaser.Scene {
     this.run.hp = Math.max(0, this.player.getHp());
     this.meme.sync(this.run);
     const payload: ResultPayload = {
+      act: 1,
       victory: false,
       timeMs: elapsedMs(this.run),
       stats: { ...this.run.stats },

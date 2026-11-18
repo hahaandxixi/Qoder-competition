@@ -55,5 +55,51 @@
         "label": "红毯收网 · 终极发布"
       }
     ]
+  },
+  {
+    "id": "boss_huang",
+    "name": "荒哥",
+    "title": "荒野岛 · 意外事故主持人",
+    "hp": 720,
+    "intro": "意外不是事故，是节目效果。",
+    "defeatLine": "本期拍摄完毕。设备……先别拍设备。",
+    "taunts": [
+      "镜头跟上，这就是节目效果！",
+      "别怕，意外才有播放量。",
+      "这一段剪掉，就当没发生。",
+      "风越大，故事越大。",
+      "设备还在，人就没输。"
+    ],
+    "phases": [
+      {
+        "phase": 1,
+        "fromHpPct": 1,
+        "attackIntervalMs": 2500,
+        "parryQuestionId": "parry_wangming_act2",
+        "attackPool": ["viewfinder_net", "gear_toss"],
+        "staggerMs": 3000,
+        "label": "镜头跟上"
+      },
+      {
+        "phase": 2,
+        "fromHpPct": 0.66,
+        "attackIntervalMs": 2100,
+        "parryQuestionId": "parry_wangming_act2",
+        "attackPool": ["viewfinder_net", "gear_toss"],
+        "staggerMs": 3000,
+        "label": "亡命天涯",
+        "special": "road_sign_drag"
+      },
+      {
+        "phase": 3,
+        "fromHpPct": 0.33,
+        "attackIntervalMs": 1800,
+        "parryQuestionId": "parry_haoshi_act2",
+        "attackPool": ["viewfinder_net", "gear_toss", "canopy_leak"],
+        "staggerMs": 3000,
+        "label": "这是好事呀",
+        "special": "canopy_rain"
+      }
+    ]
   }
 ]

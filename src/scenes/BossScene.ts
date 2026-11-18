@@ -126,6 +126,7 @@ export class BossScene extends Phaser.Scene {
     this.introSkipHandler = null;
 
     this.run = getRunState(this);
+    this.run.act = 1;
     if (this.run.hp <= 0) {
       this.run.hp = Math.round(PLAYER.maxHp * 0.6);
     }
@@ -2125,6 +2126,7 @@ export class BossScene extends Phaser.Scene {
     this.meme.sync(this.run);
     this.run.cards = [...this.run.cards];
     const payload: ResultPayload = {
+      act: 1,
       victory,
       timeMs: elapsedMs(this.run),
       stats: { ...this.run.stats },

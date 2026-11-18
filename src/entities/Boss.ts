@@ -13,6 +13,28 @@ export interface BossHost {
   onDefeated: () => void;
 }
 
+export interface BossOptions {
+  config: BossConfig;
+  texture: string;
+  glitchTexture: string;
+  glitchTint: number;
+  bodyWidth: number;
+  bodyHeight: number;
+  bodyOffsetX: number;
+  bodyOffsetY: number;
+}
+
+const DEFAULT_BOSS_OPTIONS: BossOptions = {
+  config: BOSS_ZHEN,
+  texture: TEX.boss,
+  glitchTexture: TEX.bossGlitch,
+  glitchTint: COLORS.neon,
+  bodyWidth: 112,
+  bodyHeight: 176,
+  bodyOffsetX: 34,
+  bodyOffsetY: 30,
+};
+
 export class Boss extends Phaser.Physics.Arcade.Sprite {
   readonly config: BossConfig;
   private readonly host: BossHost;
@@ -25,9 +47,10 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
   private lastHitSoundAt = 0;
   private readonly glitch: Phaser.GameObjects.Image;
 
-  constructor(scene: Phaser.Scene, x: number, y: number, host: BossHost) {
-    super(scene, x, y, TEX.boss);
-    this.config = BOSS_ZHEN;
+  constructor(scene: Phaser.Scene, x: number, y: number, host: BossHost, options: Partial<BossOptions> = {}) {
+    const settings = { ...DEFAULT_BOSS_OPTIONS, ...options };
+    super(scene, x, y, settings.texture);
+    this.config = settings.config;
     this.host = host;
     this.maxHp = this.config.hp;
     this.hp = this.maxHp;
@@ -38,14 +61,14 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     const body = this.body as Phaser.Physics.Arcade.Body;
     body.setAllowGravity(false);
     body.setImmovable(true);
-    body.setSize(112, 176);
-    body.setOffset(34, 30);
+    body.setSize(settings.bodyWidth, settings.bodyHeight);
+    body.setOffset(settings.bodyOffsetX, settings.bodyOffsetY);
     body.setMaxVelocity(1000, 1000);
 
-    this.glitch = scene.add.image(x + 8, y - 4, TEX.bossGlitch);
+    this.glitch = scene.add.image(x + 8, y - 4, settings.glitchTexture);
     this.glitch.setDepth(23);
     this.glitch.setAlpha(0.55);
-    this.glitch.setTint(COLORS.neon);
+    this.glitch.setTint(settings.glitchTint);
   }
 
   tick(time: number): void {
@@ -135,6 +158,11 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
 
   setInvulnerable(durationMs: number): void {
     this.invulnUntil = this.scene.time.now + durationMs;
+  }
+
+  setPresentationVisible(visible: boolean): void {
+    this.setVisible(visible);
+    this.glitch.setVisible(visible);
   }
 
   isStaggered(time: number): boolean {
