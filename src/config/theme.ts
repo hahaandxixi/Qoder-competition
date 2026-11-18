@@ -1,0 +1,59 @@
+export const COLORS = {
+  paper: 0xe9dfc8,
+  paperDim: 0xcfc2a6,
+  paperDark: 0xb3a487,
+  coal: 0x171310,
+  coalSoft: 0x2a231d,
+  coalFaint: 0x3a3128,
+  rust: 0xa83a22,
+  rustDark: 0x6e2516,
+  warning: 0xe8b23a,
+  warningPale: 0xf3d88b,
+  neon: 0x4be3c8,
+  glitch: 0x7dff6a,
+  blood: 0xca3b2b,
+  ink: 0x211b16,
+  white: 0xfff7e4,
+} as const;
+
+export const CSS = {
+  paper: '#e9dfc8',
+  paperDim: '#cfc2a6',
+  coal: '#171310',
+  coalSoft: '#2a231d',
+  rust: '#a83a22',
+  warning: '#e8b23a',
+  neon: '#4be3c8',
+  glitch: '#7dff6a',
+  white: '#fff7e4',
+  ink: '#211b16',
+} as const;
+
+export const FONTS = {
+  display: '"Arial Black", "Microsoft YaHei", "PingFang SC", sans-serif',
+  body: '"Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif',
+  mono: '"Courier New", "Consolas", "Microsoft YaHei", monospace',
+} as const;
+
+export const TEX = {
+  raccoon: 'tex-raccoon',
+  raccoonHurt: 'tex-raccoon-hurt',
+  bullet: 'tex-bullet',
+  bulletAlly: 'tex-bullet-ally',
+  orb: 'tex-boss-orb',
+  scrap: 'tex-scrap',
+  opossum: 'tex-opossum',
+  lobster: 'tex-lobster',
+  boss: 'tex-boss',
+  bossGlitch: 'tex-boss-glitch',
+  dust: 'tex-dust',
+  spark: 'tex-spark',
+  cardIcon: 'tex-card-icon',
+  ally: 'tex-ally',
+  skyFar: 'tex-sky-far',
+  skyMid: 'tex-sky-mid',
+  stageBg: 'tex-stage-bg',
+  avatarA: 'tex-avatar-a',
+  avatarB: 'tex-avatar-b',
+  avatarC: 'tex-avatar-c',
+} as const;

@@ -1,0 +1,99 @@
+:root {
+  --paper: #e9dfc8;
+  --coal: #171310;
+  --rust: #a83a22;
+  --warning: #e8b23a;
+  --neon: #4be3c8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--coal);
+  color: var(--paper);
+  font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+body {
+  background-image:
+    radial-gradient(circle at 18% 12%, rgba(232, 178, 58, 0.08), transparent 26%),
+    radial-gradient(circle at 82% 78%, rgba(75, 227, 200, 0.05), transparent 24%),
+    repeating-linear-gradient(0deg, rgba(233, 223, 200, 0.025) 0 1px, transparent 1px 4px);
+}
+
+#game {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+#game canvas {
+  display: block;
+  image-rendering: pixelated;
+  box-shadow: 0 0 0 1px rgba(233, 223, 200, 0.12), 0 18px 80px rgba(0, 0, 0, 0.65);
+  touch-action: none;
+}
+
+#rotate-hint {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  align-items: center;
+  justify-content: center;
+  padding: 22px;
+  background: rgba(23, 19, 16, 0.78);
+  backdrop-filter: blur(3px);
+  pointer-events: none;
+}
+
+.rotate-card {
+  width: min(330px, 82vw);
+  padding: 20px 22px;
+  transform: rotate(-2deg);
+  background: var(--paper);
+  color: var(--coal);
+  border: 3px solid var(--coal);
+  box-shadow: 7px 7px 0 var(--rust);
+}
+
+.rotate-mark {
+  display: inline-block;
+  margin-bottom: 10px;
+  padding: 3px 8px;
+  background: var(--warning);
+  border: 2px solid var(--coal);
+  font-family: "Courier New", monospace;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.rotate-card strong {
+  display: block;
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.rotate-card p {
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+@media (orientation: portrait) and (pointer: coarse) {
+  #rotate-hint {
+    display: flex;
+  }
+}

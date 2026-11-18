@@ -1,0 +1,20 @@
+{
+  "name": "raccoon-rocket-unnamed-crisis",
+  "private": true,
+  "version": "0.1.0",
+  "description": "浣熊火箭：无名氏危机 — Phaser 3 横版认梗闯关游戏",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "node scripts/build.mjs",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "phaser": "^3.90.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5"
+  }
+}

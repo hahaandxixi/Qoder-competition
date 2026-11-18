@@ -33,3 +33,4 @@ venv/
 # Logs & temp
 *.log
 tmp/
+.tmp-esbuild/

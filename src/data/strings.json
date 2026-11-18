@@ -1,0 +1,178 @@
+{
+  "menu": {
+    "eyebrow": "QODER 高校创造力大赛 · 废土档案 404 号",
+    "title": "浣熊火箭",
+    "subtitle": "无名氏危机",
+    "tagline": "名字被偷走了，梗还在。认出来，就打回去。",
+    "start": "签收任务",
+    "startHint": "点击 / ENTER 开始",
+    "credits": "档案与声明",
+    "controlsTitle": "操作面单",
+    "controls": [
+      "A / D  移动",
+      "SPACE  二段跳",
+      "J  射击",
+      "K  冲刺",
+      "E  交互",
+      "1 / 2 / 3  认梗抢答"
+    ],
+    "best": "本地最佳档案",
+    "noRecord": "尚无通关记录，档案室很空。",
+    "footer": "纯静态网页 · 无外部素材 · 音效在首次操作后开启",
+    "muteOn": "声音：开",
+    "muteOff": "声音：关"
+  },
+  "hud": {
+    "hpLabel": "网络热度",
+    "memeLabel": "互联网浓度检测仪",
+    "cardsLabel": "梗卡签收袋",
+    "emptySlot": "空位",
+    "useCards": "Z / X / C 使用梗卡",
+    "burst": "全民玩梗",
+    "shield": "好事护盾",
+    "bossHp": "热搜指数",
+    "phase": "阶段",
+    "stagger": "发布会暂停"
+  },
+  "level": {
+    "tutorialMove": "A / D 移动 · SPACE 二段跳",
+    "tutorialCombat": "J 射击 · K 冲刺",
+    "tutorialDoor": "按 E 与名字门对线",
+    "doorPrompt": "名字门 404 · 按 E 查验",
+    "doorLocked": "门缝里飘出一句：名字不对，不开。",
+    "checkpoint": "临时签收点已更新",
+    "exitPrompt": "发布会大门 · 按 E 进入",
+    "vendingLow": "检测到弱者饮料需求。按 E 签收。",
+    "vendingHigh": "强者请自便。",
+    "vendingDone": "补给已领，别把瓶子乱丢。",
+    "pitFall": "你掉出了包裹分拣线。",
+    "cardsFull": "卡槽已满，最旧的卡被替换了。"
+  },
+  "door": {
+    "eyebrow": "名字门 · 慢速查验",
+    "title": "报出它的名字",
+    "subtitle": "四选一。答错可以重试，门不急，门只尴尬。",
+    "correct": "名字对上了，门自己开了。",
+    "wrong": "门说：再想想，你的互联网记忆在漏。",
+    "timeout": "查验超时。门替你叹了口气。",
+    "retry": "按 E 重新查验",
+    "rewardTitle": "签收一张梗卡",
+    "rewardSubtitle": "三选一，塞进你的梗卡签收袋。",
+    "rewardHeal": "门缝里递出一瓶水，网络热度恢复 30%。",
+    "rewardFull": "签收袋满了，最旧的梗卡被当场作废。",
+    "openStamp": "开门成功"
+  },
+  "quiz": {
+    "parryEyebrow": "弹幕入侵 · 2 秒抢答",
+    "commentLabel": "热评",
+    "timerLabel": "剩余热度",
+    "parryPrompt": "Boss 正在蓄力：在弹幕里认出这个梗！",
+    "correctStamp": "完美弹反",
+    "wrongStamp": "记忆断线",
+    "timeoutStamp": "答案过期",
+    "answerWas": "正确答案",
+    "parrySuccess": "梗已反弹，热搜塌了。",
+    "parryFail": "弹幕把你淹没了。",
+    "keyHint": "数字键 1 / 2 / 3 作答 · 手机直接点",
+    "memoryLost": "互联网记忆正在离你远去。"
+  },
+  "boss": {
+    "arrive": "发布会大厦 · 顶层",
+    "waiting": "甄领先正在整理提词器。",
+    "phaseBannerPrefix": "第",
+    "phaseBannerSuffix": "阶段",
+    "specialPrompt": "特殊招式 · 认梗弹反",
+    "defeated": "名字已夺回",
+    "defeatedSub": "发布会临时取消，互联网恢复呼吸。",
+    "barrageTop": "热搜直播中",
+    "staggerLine": "发布会暂停，热搜开始掉线。"
+  },
+  "result": {
+    "victoryEyebrow": "任务签收单 · 完成",
+    "victoryTitle": "名字已夺回",
+    "victorySub": "甄领先的发布会临时取消，互联网恢复呼吸。",
+    "failEyebrow": "任务签收单 · 作废",
+    "failTitle": "本轮互联网记忆已清空",
+    "failSub": "名字没夺回来，但梗还在。再来一把，这是好事呀。",
+    "statsTime": "用时",
+    "statsCorrect": "答对",
+    "statsWrong": "答错",
+    "statsTimeout": "超时",
+    "statsParry": "弹反",
+    "statsCards": "梗卡",
+    "statsKills": "击败",
+    "retry": "再来一把，这是好事呀",
+    "menu": "返回标题",
+    "credits": "档案与声明",
+    "newBest": "新档案已盖章",
+    "bestRecord": "最佳档案"
+  },
+  "credits": {
+    "title": "档案与声明",
+    "subtitle": "包裹来源、人物虚构声明与素材清单",
+    "fictionalTitle": "虚构声明",
+    "fictional": "本作人物、公司与组织均为虚构玩梗形象，纯属娱乐，\n与任何真实人物、公司或事件无关。",
+    "assetsTitle": "素材来源",
+    "assets": [
+      "角色、敌人、Boss、场景与 UI：\n全部由代码程序化绘制（自制）。",
+      "音效与背景音乐：WebAudio\n实时合成（自制），未使用任何视频或音频片段。",
+      "引擎：Phaser 3（MIT）；构建：Vite（MIT）；\n语言：TypeScript（Apache-2.0）。",
+      "字体：使用设备本地系统字体，\n未从外部 CDN 加载字体。"
+    ],
+    "legalTitle": "内容边界",
+    "legal": "不使用真实姓名、真实公司、商标、Logo、真人肖像；\n不复制短视频原音频、原画面或长段台词。所有梗均\n以简短、善意、戏仿方式使用。",
+    "teamTitle": "制作",
+    "team": [
+      "策划 / 程序 / 美术 / 音频：本项目开发团队",
+      "仓库：github.com/hahaandxixi/Qoder-competition"
+    ],
+    "back": "返回"
+  },
+  "toasts": {
+    "cardFull": "签收袋满了，最旧的梗卡被替换。",
+    "noBoss": "附近没有值得定住的东西。",
+    "shieldBreak": "坏事已被改写成护盾。",
+    "burst": "全民玩梗！伤害翻倍。",
+    "checkpoint": "临时签收点已更新",
+    "doorOpen": "门开了。里面是自己人。",
+    "memeLost": "互联网记忆正在离你远去。",
+    "weakSupply": "检测到弱者饮料需求。",
+    "strongSupply": "强者补给已签收。"
+  },
+  "enemy": {
+    "opossumName": "背手负鼠",
+    "lobsterName": "龙虾机器人",
+    "opossumTaunt": "梆梆！",
+    "lobsterTaunt": "请排队取号。",
+    "hitLabel": "包裹受损"
+  },
+  "barrage": [
+    "？",
+    "就这？",
+    "绷不住了",
+    "这波在大气层",
+    "我先撤了",
+    "全网热议",
+    "热搜第 1",
+    "这也能赢？",
+    "档案更新中",
+    "已截图"
+  ],
+  "commenters": [
+    "纸箱001",
+    "夜班分拣员",
+    "梗仓管理员",
+    "路过的浣熊",
+    "热搜观察员",
+    "评论区钉子户"
+  ],
+  "misc": {
+    "loading": "正在装配火箭……",
+    "loadingHint": "贴好胶带，订好档案。",
+    "died": "网络热度归零",
+    "next": "继续",
+    "unknown": "未知",
+    "pressAny": "点击任意位置开启声音",
+    "lowHp": "网络热度告急"
+  }
+}

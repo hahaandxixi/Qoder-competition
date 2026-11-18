@@ -1,0 +1,134 @@
+[
+  {
+    "id": "parry_yaoyao",
+    "mode": "parry",
+    "prompt": "发布会大屏突然滚动字幕：“我们再次___！”",
+    "options": ["遥遥领先", "后来居上", "礼貌围观"],
+    "answer": "遥遥领先",
+    "reveal": "优势巨大，先说三遍。发布会名场面词。",
+    "hints": ["常用于形容巨大优势", "一场发布会上反复出现的表达"],
+    "cardId": "card_yaoyao",
+    "tags": ["发布会", "名场面"]
+  },
+  {
+    "id": "parry_dashui",
+    "mode": "parry",
+    "prompt": "弹幕齐问：“强者到底喝什么？”",
+    "options": ["大水", "冰美式", "泡泡水"],
+    "answer": "大水",
+    "reveal": "弱者喝饮料，强者喝大水。",
+    "hints": ["大瓶装", "和“弱者饮料”相对"],
+    "cardId": "card_dashui",
+    "tags": ["生活", "补给"]
+  },
+  {
+    "id": "parry_guangzhi",
+    "mode": "parry",
+    "prompt": "队友被围，公屏只剩两个字：“___”",
+    "options": ["广智救我", "兄弟慢走", "自求多福"],
+    "answer": "广智救我",
+    "reveal": "绝境求援，喊就完事。",
+    "hints": ["四个字，但不是成语", "用来呼叫救兵"],
+    "cardId": "card_guangzhi",
+    "tags": ["求援", "团队"]
+  },
+  {
+    "id": "parry_bangbang",
+    "mode": "parry",
+    "prompt": "背手大爷突然出手，字幕打出：“___”",
+    "options": ["梆梆两拳", "轻轻一拍", "礼貌握手"],
+    "answer": "梆梆两拳",
+    "reveal": "背手是假动作，出手才是正文。",
+    "hints": ["拟声词开头", "和拳头有关"],
+    "cardId": "card_bangbang",
+    "tags": ["动作", "反差"]
+  },
+  {
+    "id": "parry_wangming",
+    "mode": "parry",
+    "prompt": "跑路专用 BGM 开始循环，标题是：“___”",
+    "options": ["亡命天涯", "原地踏步", "准点下班"],
+    "answer": "亡命天涯",
+    "reveal": "一路狂奔，脚底冒烟。",
+    "hints": ["形容流亡逃命", "四个字的成语"],
+    "cardId": "card_wangming",
+    "tags": ["跑路", "速度"]
+  },
+  {
+    "id": "parry_labu",
+    "mode": "parry",
+    "prompt": "主播对着镜头比心，观众却听成：“___”",
+    "options": ["比个拉布", "给你一拳", "明天见"],
+    "answer": "比个拉布",
+    "reveal": "发音走样，反而成了暗号。",
+    "hints": ["发音跑偏的手势梗", "不是外语"],
+    "cardId": "card_labu",
+    "tags": ["发音梗", "互动"]
+  },
+  {
+    "id": "door_haoshi",
+    "mode": "door",
+    "prompt": "碰上糟心事，网友硬核乐观：“___”",
+    "options": ["这是好事呀", "这不关我事", "这不可能", "这得加钱"],
+    "answer": "这是好事呀",
+    "reveal": "坏消息也能翻个面，先乐观点。",
+    "hints": ["一句强行乐观的安慰", "常用在倒霉现场"],
+    "cardId": "card_haoshi",
+    "tags": ["心态", "评论区"]
+  },
+  {
+    "id": "door_huadi",
+    "mode": "door",
+    "prompt": "“画地为牢”原本更接近哪种意思？",
+    "options": ["自己给自己划圈", "画一张地图", "在地里种菜", "给别人让座"],
+    "answer": "自己给自己划圈",
+    "reveal": "原义是自己困住自己，后来成了梗。",
+    "hints": ["来源是成语", "和限制自己有关"],
+    "cardId": "card_huadi",
+    "tags": ["成语", "自我限制"]
+  },
+  {
+    "id": "door_fabu",
+    "mode": "door",
+    "prompt": "“遥遥领先”最常被用来形容什么？",
+    "options": ["优势特别大", "排队特别久", "网速特别慢", "菜量特别少"],
+    "answer": "优势特别大",
+    "reveal": "发布会上常见的夸张表达。",
+    "hints": ["和差距有关", "不是形容等待"],
+    "cardId": "card_yaoyao",
+    "tags": ["发布会", "优势"]
+  },
+  {
+    "id": "door_qiuyuan",
+    "mode": "door",
+    "prompt": "网友喊“广智救我”时，通常是在做什么？",
+    "options": ["绝境求援", "炫耀新装备", "直播做饭", "准点打卡"],
+    "answer": "绝境求援",
+    "reveal": "打不过了，先喊救兵。",
+    "hints": ["和“救我”字面有关", "不是日常问候"],
+    "cardId": "card_guangzhi",
+    "tags": ["求援", "游戏"]
+  },
+  {
+    "id": "door_paolu",
+    "mode": "door",
+    "prompt": "用“亡命天涯”形容一种玩法，最贴切的是？",
+    "options": ["一路狂奔逃命", "原地挂机", "安心种田", "认真复习"],
+    "answer": "一路狂奔逃命",
+    "reveal": "边跑边回头看，典型的逃亡流。",
+    "hints": ["重点在“亡命”和“天涯”", "和移动速度有关"],
+    "cardId": "card_wangming",
+    "tags": ["跑路", "玩法"]
+  },
+  {
+    "id": "door_dashui",
+    "mode": "door",
+    "prompt": "售货机检测到你血量见底，最可能提示哪句？",
+    "options": ["检测到弱者饮料需求", "检测到强者健身需求", "请先投币再做梦", "本机已下班"],
+    "answer": "检测到弱者饮料需求",
+    "reveal": "弱点被精准识别，但补给还是要拿。",
+    "hints": ["弱者与强者的对比", "一台不太礼貌的售货机"],
+    "cardId": "card_dashui",
+    "tags": ["补给", "弱者饮料"]
+  }
+]

@@ -1,0 +1,82 @@
+[
+  {
+    "id": "card_dashui",
+    "name": "大水",
+    "effect": "heal_full",
+    "durationMs": 0,
+    "desc": "回满网络热度。弱者\n喝饮料，强者喝大水。",
+    "quote": "强者补给已签收。",
+    "stamp": "1.5L 起",
+    "color": "#4be3c8"
+  },
+  {
+    "id": "card_huadi",
+    "name": "画地为牢",
+    "effect": "freeze_boss",
+    "durationMs": 2800,
+    "desc": "定住 Boss 2.8 秒。\n谁画的圈，谁先站住。",
+    "quote": "圈子已经画好，请勿越线。",
+    "stamp": "原地站好",
+    "color": "#e8b23a"
+  },
+  {
+    "id": "card_bangbang",
+    "name": "梆梆两拳",
+    "effect": "attack_speed",
+    "durationMs": 5000,
+    "desc": "射击速度翻倍 5 秒。\n冷不丁就多打两拳。",
+    "quote": "手速已临时翻倍。",
+    "stamp": "×2 手速",
+    "color": "#a83a22"
+  },
+  {
+    "id": "card_wangming",
+    "name": "亡命天涯",
+    "effect": "dash_no_cd",
+    "durationMs": 7000,
+    "desc": "冲刺无冷却 7 秒。\n跑路，是门手艺。",
+    "quote": "脚底已经抹油。",
+    "stamp": "无 CD",
+    "color": "#f3d88b"
+  },
+  {
+    "id": "card_haoshi",
+    "name": "这是好事呀",
+    "effect": "shield",
+    "durationMs": 8000,
+    "desc": "8 秒内挡下伤害。\n坏事也能转成护盾。",
+    "quote": "坏事已被改写成护盾。",
+    "stamp": "好事发生",
+    "color": "#7dff6a"
+  },
+  {
+    "id": "card_yaoyao",
+    "name": "遥遥领先",
+    "effect": "move_attack",
+    "durationMs": 5000,
+    "desc": "移速与射速提升\n30%，持续 5 秒。",
+    "quote": "优势正在扩大。",
+    "stamp": "领先中",
+    "color": "#46e0c8"
+  },
+  {
+    "id": "card_guangzhi",
+    "name": "广智救我",
+    "effect": "summon_ally",
+    "durationMs": 9000,
+    "desc": "召唤纸箱小弟\n自动射击 9 秒。",
+    "quote": "纸箱小弟已上线。",
+    "stamp": "救兵到",
+    "color": "#cfc2a6"
+  },
+  {
+    "id": "card_labu",
+    "name": "比个拉布",
+    "effect": "screen_clear",
+    "durationMs": 0,
+    "desc": "清空弹幕并造成\n全场伤害。比个手势，\n世界安静。",
+    "quote": "屏幕安静了。",
+    "stamp": "全场静音",
+    "color": "#e8b23a"
+  }
+]
