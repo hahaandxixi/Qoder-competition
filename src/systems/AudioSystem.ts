@@ -24,7 +24,8 @@ type SoundName =
   | 'rewind'
   | 'bell'
   | 'spray'
-  | 'stampThud';
+  | 'stampThud'
+  | 'scan';
 
 type AudioContextCtor = typeof AudioContext;
 
@@ -225,6 +226,11 @@ class AudioSystem {
         // 印章砸下：低频闷响加一点纸面震动。
         this.tone(now, 130, 0.16, 'sawtooth', 0.08, 46);
         this.noise(now, 0.1, 0.05);
+        break;
+      case 'scan':
+        // 旧扫码枪：一声干脆的“滴”。
+        this.tone(now, 1480, 0.09, 'square', 0.055, 1420);
+        this.tone(now + 0.085, 1180, 0.16, 'sine', 0.045, 1160);
         break;
       default:
         break;

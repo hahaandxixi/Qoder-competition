@@ -105,7 +105,7 @@ export const BOSS = {
   rainSpawnIntervalMs: 110,
   rainDamage: 11,
   phaseBannerMs: 1500,
-  introMs: 2300,
+  introMs: 4000,
   deathDelayMs: 1700,
   reflectCardSlots: 3,
 } as const;

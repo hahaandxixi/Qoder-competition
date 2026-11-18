@@ -79,7 +79,16 @@ export class BossScene extends Phaser.Scene {
   private specialProps: Phaser.GameObjects.Container | null = null;
   private specialStampView: Phaser.GameObjects.Container | null = null;
   private specialRobot: Phaser.GameObjects.Container | null = null;
+  private specialReceipt: Phaser.GameObjects.Container | null = null;
+  private specialStamps: Phaser.GameObjects.Container[] = [];
   private specialEpoch = 0;
+  /** 首次登场的四秒连续镜头。 */
+  private introActive = false;
+  private introEpoch = 0;
+  private introWorld: Phaser.GameObjects.Container | null = null;
+  private introUi: Phaser.GameObjects.Container | null = null;
+  private introSkipHandler: (() => void) | null = null;
+  private introProjection: Phaser.GameObjects.Container | null = null;
 
   constructor() {
     super('Boss');
@@ -107,7 +116,14 @@ export class BossScene extends Phaser.Scene {
     this.specialProps = null;
     this.specialStampView = null;
     this.specialRobot = null;
+    this.specialReceipt = null;
+    this.specialStamps = [];
     this.specialEpoch = 0;
+    this.introActive = false;
+    this.introEpoch = 0;
+    this.introWorld = null;
+    this.introUi = null;
+    this.introSkipHandler = null;
 
     this.run = getRunState(this);
     if (this.run.hp <= 0) {
@@ -123,7 +139,8 @@ export class BossScene extends Phaser.Scene {
     this.player = new Player(this, 220, 560, this.run.hp, this.makePlayerCallbacks());
     this.meme = new MemeMeter(this.run);
     this.boss = new Boss(this, BOSS_HOVER_X, BOSS_HOVER_Y, this.makeBossHost());
-    this.boss.setInvulnerable(BOSS.introMs + 300);
+    const introSeen = this.registry.get('bossIntroSeen') === true;
+    this.boss.setInvulnerable(introSeen ? 500 : BOSS.introMs + 300);
     this.bullets = this.physics.add.group({ allowGravity: false });
     this.bossProjectiles = this.physics.add.group({ allowGravity: false });
     this.setupCollisions();
@@ -131,25 +148,26 @@ export class BossScene extends Phaser.Scene {
     this.setupTouch();
     this.setupAmbient();
 
-    this.showIntro();
+    if (introSeen) {
+      this.startFight();
+    } else {
+      this.playIntro();
+    }
     addScanlines(this, 90);
     this.events.once('shutdown', () => this.cleanupScene());
-
-    this.time.delayedCall(BOSS.introMs, () => {
-      if (this.finished) {
-        return;
-      }
-      this.fightStarted = true;
-      this.boss.setInvulnerable(0);
-      this.nextAttackAt = this.time.now + 900;
-      this.nextSpecialAt = this.time.now + BOSS.firstSpecialDelayMs;
-      this.hud.toast('认出梗，就能把发布会打回去。', 'neon');
-    });
   }
 
   override update(time: number, delta: number): void {
     if (!this.player) {
       return;
+    }
+    if (this.introActive && this.introUi) {
+      const zoom = this.cameras.main.zoom;
+      this.introUi.setScale(1 / zoom);
+      if (this.introProjection) {
+        this.introProjection.setScale(1 / zoom);
+        this.introProjection.setPosition(GAME_WIDTH / 2, GAME_HEIGHT / 2 + (132 - GAME_HEIGHT / 2) / zoom);
+      }
     }
     if (!this.finished) {
       this.player.tick(time, delta);
@@ -243,6 +261,55 @@ export class BossScene extends Phaser.Scene {
     for (let x = 288; x < 1000; x += 56) {
       redCarpet.lineStyle(1, COLORS.coal, 0.25);
       redCarpet.lineBetween(x, 574, x + 20, 632);
+    }
+
+    const stageProps = this.add.graphics();
+    stageProps.setDepth(5);
+    // 中景：快递传送带与升降台
+    stageProps.fillStyle(COLORS.coal, 0.9);
+    stageProps.fillRect(300, 588, 330, 30);
+    stageProps.fillStyle(COLORS.warning, 0.6);
+    stageProps.fillRect(300, 588, 330, 3);
+    stageProps.fillStyle(COLORS.coalFaint, 1);
+    for (let x = 312; x < 620; x += 26) {
+      stageProps.fillCircle(x, 606, 6);
+      stageProps.fillStyle(COLORS.paperDim, 0.45);
+      stageProps.fillCircle(x, 606, 2);
+      stageProps.fillStyle(COLORS.coalFaint, 1);
+    }
+    const liftRail = this.add.graphics();
+    liftRail.setDepth(5);
+    liftRail.fillStyle(COLORS.coal, 0.85);
+    liftRail.fillRect(730, 500, 10, 136);
+    liftRail.fillRect(808, 500, 10, 136);
+    liftRail.fillStyle(COLORS.paperDim, 0.24);
+    liftRail.fillRect(742, 524, 64, 8);
+    liftRail.fillStyle(COLORS.warning, 0.7);
+    liftRail.fillRect(742, 600, 64, 5);
+    // 远景讲台（Boss 舞台右侧、角色后方）
+    const podium = this.add.graphics();
+    podium.setDepth(3);
+    podium.fillStyle(COLORS.coal, 0.92);
+    podium.fillRect(878, 574, 104, 62);
+    podium.lineStyle(2, COLORS.warning, 0.55);
+    podium.strokeRect(878, 574, 104, 62);
+    podium.fillStyle(COLORS.rust, 0.7);
+    podium.fillRect(878, 574, 104, 5);
+    // 近景：垂下来的卷曲面单
+    const slips = this.add.graphics();
+    slips.setDepth(6);
+    for (let i = 0; i < 5; i += 1) {
+      const x = 120 + i * 250;
+      const length = 96 + (i % 3) * 34;
+      slips.fillStyle(i % 2 === 0 ? COLORS.paperDim : COLORS.paper, 0.1);
+      slips.fillRect(x, 44, 38, length);
+      slips.fillStyle(COLORS.rust, 0.16);
+      slips.fillRect(x + 5, 64, 28, 2);
+      slips.fillRect(x + 5, 76, 20, 2);
+      slips.lineStyle(2, COLORS.coalFaint, 0.5);
+      slips.lineBetween(x, 44, x, 140 + length);
+      slips.fillStyle(COLORS.paperDark, 0.18);
+      slips.fillTriangle(x, 44 + length, x + 38, 44 + length, x + 19, 44 + length + 16);
     }
 
     for (let i = 0; i < 10; i += 1) {
@@ -419,73 +486,401 @@ export class BossScene extends Phaser.Scene {
     });
   }
 
-  private showIntro(): void {
-    const root = this.add.container(GAME_WIDTH / 2, 300);
-    root.setScrollFactor(0);
-    root.setDepth(450);
-    const g = this.add.graphics();
-    g.fillStyle(COLORS.coal, 0.93);
-    g.fillRect(-500, -190, 1000, 380);
-    g.lineStyle(3, COLORS.warning, 0.8);
-    g.strokeRect(-500, -190, 1000, 380);
-    g.fillStyle(COLORS.rust, 0.95);
-    g.fillRect(-500, -190, 10, 380);
-    g.fillStyle(COLORS.paper, 0.08);
-    for (let y = -170; y < 180; y += 18) {
-      g.fillRect(-480, y, 960, 1);
+  private playIntro(): void {
+    this.introActive = true;
+    this.introEpoch += 1;
+    const epoch = this.introEpoch;
+    this.fightStarted = false;
+    this.player.setControlEnabled(false);
+    this.touch?.setEnabled(false);
+    this.cameras.main.zoomTo(1.3, 520, 'Sine.easeInOut');
+    this.cameras.main.pan(BOSS_HOVER_X, 425, 620, 'Sine.easeInOut');
+    audio.play('door');
+
+    const world = this.add.container(0, 0);
+    world.setDepth(58);
+    this.introWorld = world;
+
+    const shade = this.add.graphics();
+    shade.fillStyle(COLORS.coal, 0.34);
+    shade.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    world.add(shade);
+    const spotlight = this.add.ellipse(BOSS_HOVER_X, 510, 320, 470, COLORS.warning, 0.12);
+    spotlight.setBlendMode(Phaser.BlendModes.ADD);
+    world.add(spotlight);
+
+    const podium = this.add.graphics();
+    podium.fillStyle(COLORS.coal, 0.98);
+    podium.fillRect(BOSS_HOVER_X - 104, 430, 208, 236);
+    podium.lineStyle(3, COLORS.warning, 0.7);
+    podium.strokeRect(BOSS_HOVER_X - 104, 430, 208, 236);
+    podium.fillStyle(COLORS.rust, 0.65);
+    podium.fillRect(BOSS_HOVER_X - 104, 430, 208, 8);
+    podium.fillStyle(COLORS.paperDim, 0.2);
+    for (let x = BOSS_HOVER_X - 92; x < BOSS_HOVER_X + 100; x += 26) {
+      podium.fillRect(x, 446, 2, 204);
     }
-    const tape = makeTape(this, 0, -190, 260, 24, COLORS.warning);
-    tape.setRotation(-0.02);
-    const header = this.add.text(0, -148, STRINGS.boss.arrive, {
-      fontFamily: FONTS.mono,
-      fontSize: '14px',
-      color: CSS.warning,
-      fontStyle: 'bold',
-    });
-    header.setOrigin(0.5);
-    const name = glitchText(this, 0, -80, this.boss.config.name, {
-      fontFamily: FONTS.display,
-      fontSize: '58px',
-      color: CSS.paper,
-      fontStyle: 'bold',
-    });
-    const title = this.add.text(0, -26, this.boss.config.title, {
+    podium.lineStyle(2, COLORS.coal, 0.7);
+    podium.lineBetween(BOSS_HOVER_X - 90, 466, BOSS_HOVER_X + 90, 466);
+    world.add(podium);
+
+    const podiumTag = makeTape(this, BOSS_HOVER_X - 6, 620, 142, 26, COLORS.warning);
+    podiumTag.setRotation(-0.02);
+    world.add(podiumTag);
+    const podiumText = this.add.text(BOSS_HOVER_X - 6, 620, '倒扣周转箱', {
       fontFamily: FONTS.mono,
       fontSize: '13px',
-      color: CSS.paperDim,
+      color: CSS.coal,
+      fontStyle: 'bold',
     });
-    title.setOrigin(0.5);
-    const quote = this.add.text(0, 32, `“${this.boss.config.intro}”`, {
-      fontFamily: FONTS.body,
-      fontSize: '18px',
+    podiumText.setOrigin(0.5);
+    world.add(podiumText);
+
+    const speakerG = this.add.graphics();
+    for (const sx of [BOSS_HOVER_X - 232, BOSS_HOVER_X + 218]) {
+      speakerG.fillStyle(COLORS.coal, 0.98);
+      speakerG.fillRect(sx - 24, 494, 48, 112);
+      speakerG.lineStyle(2, COLORS.warning, 0.45);
+      speakerG.strokeRect(sx - 24, 494, 48, 112);
+      speakerG.fillStyle(COLORS.paperDim, 0.28);
+      speakerG.fillCircle(sx, 524, 12);
+      speakerG.fillCircle(sx, 558, 17);
+      speakerG.fillStyle(COLORS.rust, 0.7);
+      speakerG.fillRect(sx - 18, 584, 36, 4);
+    }
+    world.add(speakerG);
+
+    const mic = this.add.graphics();
+    mic.lineStyle(5, COLORS.paperDim, 0.9);
+    mic.lineBetween(BOSS_HOVER_X + 4, 548, BOSS_HOVER_X + 4, 480);
+    mic.fillStyle(COLORS.paper, 0.9);
+    mic.fillRoundedRect(BOSS_HOVER_X - 10, 462, 28, 24, 7);
+    mic.fillStyle(COLORS.rust, 0.9);
+    mic.fillRect(BOSS_HOVER_X - 6, 466, 20, 3);
+    world.add(mic);
+
+    const bubble = this.add.container(608, 320);
+    bubble.setAlpha(0);
+    const bubbleBg = this.add.graphics();
+    bubbleBg.fillStyle(COLORS.coal, 0.96);
+    bubbleBg.fillRect(-216, -78, 432, 156);
+    bubbleBg.lineStyle(3, COLORS.warning, 0.9);
+    bubbleBg.strokeRect(-216, -78, 432, 156);
+    bubbleBg.fillStyle(COLORS.coal, 0.96);
+    bubbleBg.fillTriangle(200, -80, 200, 80, 258, 22);
+    bubbleBg.lineStyle(3, COLORS.warning, 0.9);
+    bubbleBg.lineBetween(200, -78, 258, 22);
+    bubbleBg.lineBetween(258, 22, 200, 78);
+    const bubbleText = this.add.text(0, 0, STRINGS.boss.cinematic.scannerQuestion, {
+      fontFamily: FONTS.display,
+      fontSize: '46px',
       color: CSS.paper,
+      fontStyle: 'bold',
       align: 'center',
-      wordWrap: { width: 820 },
     });
-    quote.setOrigin(0.5);
-    const hint = this.add.text(0, 104, '认梗弹反：Boss 蓄力时，2 秒内按 1 / 2 / 3 作答。答对＝硬直＋反噬。', {
-      fontFamily: FONTS.body,
+    bubbleText.setOrigin(0.5);
+    const bubbleSmall = this.add.text(0, 50, '奶娃指着阿浣腰间的旧扫码枪', {
+      fontFamily: FONTS.mono,
       fontSize: '14px',
       color: CSS.neon,
-      align: 'center',
-      wordWrap: { width: 860 },
     });
-    hint.setOrigin(0.5);
-    const small = this.add.text(0, 148, '答题时战斗不会暂停。留意漏过来的弹幕。', {
+    bubbleSmall.setOrigin(0.5);
+    bubble.add([bubbleBg, bubbleText, bubbleSmall]);
+    world.add(bubble);
+
+    const pointer = this.add.graphics();
+    pointer.lineStyle(5, COLORS.warning, 0.85);
+    pointer.lineBetween(BOSS_HOVER_X - 180, 452, 520, 486);
+    pointer.fillStyle(COLORS.warning, 0.9);
+    pointer.fillTriangle(520, 486, 552, 468, 542, 506);
+    pointer.setAlpha(0);
+    world.add(pointer);
+
+    const flash = this.add.circle(BOSS_HOVER_X - 180, 452, 12, COLORS.warning, 0.8);
+    flash.setAlpha(0);
+    world.add(flash);
+
+    const introUi = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2);
+    introUi.setDepth(445);
+    introUi.setScrollFactor(0);
+    introUi.setScale(1 / 1.3);
+    this.introUi = introUi;
+    const halfW = GAME_WIDTH / 2;
+    const halfH = GAME_HEIGHT / 2;
+    const bars = this.add.graphics();
+    bars.fillStyle(COLORS.coal, 0.88);
+    bars.fillRect(-halfW, -halfH, GAME_WIDTH, 44);
+    bars.fillRect(-halfW, halfH - 52, GAME_WIDTH, 52);
+    bars.fillStyle(COLORS.rust, 0.7);
+    bars.fillRect(-halfW, -halfH + 44, GAME_WIDTH, 2);
+    bars.fillStyle(COLORS.warning, 0.3);
+    bars.fillRect(-halfW, halfH - 54, GAME_WIDTH, 2);
+    const caption = this.add.text(0, halfH - 24, STRINGS.boss.cinematic.gateLock, {
       fontFamily: FONTS.mono,
-      fontSize: '11px',
+      fontSize: '14px',
       color: CSS.paperDim,
+      fontStyle: 'bold',
     });
-    small.setOrigin(0.5);
-    root.add([g, tape, header, name, title, quote, hint, small]);
-    this.tweens.add({
-      targets: root,
-      alpha: 0,
-      y: 270,
-      delay: BOSS.introMs - 300,
-      duration: 400,
-      ease: 'Sine.easeIn',
-      onComplete: () => root.destroy(true),
+    caption.setOrigin(0.5);
+    const skipBg = this.add.graphics();
+    skipBg.fillStyle(COLORS.rust, 0.92);
+    skipBg.fillRect(halfW - 250, -halfH + 8, 232, 30);
+    skipBg.lineStyle(1, COLORS.warning, 0.9);
+    skipBg.strokeRect(halfW - 250, -halfH + 8, 232, 30);
+    const skipText = this.add.text(halfW - 134, -halfH + 23, STRINGS.boss.cinematic.skip, {
+      fontFamily: FONTS.mono,
+      fontSize: '13px',
+      color: CSS.paper,
+      fontStyle: 'bold',
+    });
+    skipText.setOrigin(0.5);
+    const skipZone = this.add
+      .zone(halfW - 134, -halfH + 23, 232, 30)
+      .setInteractive({ useHandCursor: true });
+    skipZone.on('pointerup', () => this.finishIntro(true));
+
+    const projection = this.add.container(GAME_WIDTH / 2, 132);
+    projection.setDepth(446);
+    projection.setScrollFactor(0);
+    projection.setAlpha(0);
+    this.introProjection = projection;
+    const projG = this.add.graphics();
+    projG.fillStyle(COLORS.paper, 0.9);
+    projG.fillRect(-280, -48, 560, 96);
+    projG.lineStyle(3, COLORS.rust, 0.85);
+    projG.strokeRect(-280, -48, 560, 96);
+    projG.fillStyle(COLORS.coal, 0.1);
+    for (let x = -268; x < 272; x += 18) {
+      projG.fillRect(x, -40, 1, 80);
+    }
+    const projTitle = this.add.text(0, -10, STRINGS.boss.cinematic.screenName, {
+      fontFamily: FONTS.display,
+      fontSize: '36px',
+      color: CSS.coal,
+      fontStyle: 'bold',
+    });
+    projTitle.setOrigin(0.5);
+    const projSmall = this.add.text(0, 30, 'SCAN OK · 本场唯一合法手机', {
+      fontFamily: FONTS.mono,
+      fontSize: '12px',
+      color: CSS.rust,
+      fontStyle: 'bold',
+    });
+    projSmall.setOrigin(0.5);
+    projection.add([projG, projTitle, projSmall]);
+    introUi.add([bars, caption, skipBg, skipText, skipZone]);
+
+    this.introSkipHandler = () => this.finishIntro(true);
+    this.input.keyboard?.on('keydown-SPACE', this.introSkipHandler);
+
+    const tag = (text: string, x: number, y: number, delay: number, tone: string): void => {
+      this.time.delayedCall(delay, () => {
+        if (epoch !== this.introEpoch) {
+          return;
+        }
+        audio.play('paper');
+        const t = this.add.text(x, y, text, {
+          fontFamily: FONTS.display,
+          fontSize: '24px',
+          color: tone,
+          fontStyle: 'bold',
+          stroke: CSS.coal,
+          strokeThickness: 6,
+        });
+        t.setOrigin(0.5);
+        t.setDepth(72);
+        t.setAngle(Phaser.Math.Between(-8, 8));
+        this.tweens.add({
+          targets: t,
+          y: y - 46,
+          alpha: 0,
+          duration: 760,
+          ease: 'Sine.easeOut',
+          onComplete: () => t.destroy(),
+        });
+      });
+    };
+
+    this.time.delayedCall(380, () => {
+      if (epoch !== this.introEpoch) {
+        return;
+      }
+      audio.play('select');
+      this.tweens.add({ targets: this.boss, angle: { from: -2, to: 2 }, duration: 90, yoyo: true, repeat: 1 });
+    });
+    tag(STRINGS.boss.cinematic.mic, BOSS_HOVER_X - 172, 436, 520, CSS.paper);
+    this.time.delayedCall(720, () => {
+      if (epoch !== this.introEpoch) {
+        return;
+      }
+      audio.play('select');
+      this.tweens.add({ targets: this.boss, angle: { from: 2, to: -2 }, duration: 90, yoyo: true, repeat: 1 });
+    });
+    tag(STRINGS.boss.cinematic.mic, BOSS_HOVER_X + 172, 436, 790, CSS.paper);
+
+    this.time.delayedCall(980, () => {
+      if (epoch !== this.introEpoch) {
+        return;
+      }
+      audio.play('stampThud');
+      this.tweens.add({ targets: podium, x: 7, duration: 60, yoyo: true, repeat: 2 });
+      addFloatingLine(this, BOSS_HOVER_X, 404, STRINGS.boss.cinematic.crateRattle, COLORS.paperDim, 13, 900);
+    });
+
+    this.time.delayedCall(1240, () => {
+      if (epoch !== this.introEpoch) {
+        return;
+      }
+      this.tweens.add({
+        targets: [podium, podiumTag, podiumText],
+        y: 154,
+        duration: 520,
+        ease: 'Sine.easeInOut',
+      });
+    });
+
+    this.time.delayedCall(1320, () => {
+      if (epoch !== this.introEpoch) {
+        return;
+      }
+      this.tweens.add({ targets: [bubble, pointer], alpha: 1, duration: 240 });
+      audio.play('select');
+      flash.setAlpha(0.9);
+      this.tweens.add({ targets: flash, scale: 2.2, alpha: 0, duration: 380 });
+    });
+
+    this.time.delayedCall(2720, () => {
+      if (epoch !== this.introEpoch) {
+        return;
+      }
+      audio.play('scan');
+      caption.setText(STRINGS.boss.cinematic.scan);
+      caption.setColor(CSS.neon);
+      this.tweens.add({ targets: projection, alpha: 1, y: 138, duration: 220, ease: 'Back.easeOut' });
+      addFloatingLine(this, this.player.x + 50, this.player.y - 80, '滴。', COLORS.neon, 30, 900);
+    });
+
+    this.time.delayedCall(3060, () => {
+      if (epoch !== this.introEpoch) {
+        return;
+      }
+      const nameStamp = stamp(this, BOSS_HOVER_X, BOSS_HOVER_Y + 42, STRINGS.boss.cinematic.screenName.split('｜')[0] ?? '甄领先', {
+        color: COLORS.rust,
+        fontSize: 22,
+        angle: 0.08,
+        alpha: 0.96,
+      });
+      nameStamp.setDepth(140);
+      nameStamp.setScale(1.8);
+      this.tweens.add({
+        targets: nameStamp,
+        scale: 1,
+        y: BOSS_HOVER_Y + 64,
+        duration: 180,
+        ease: 'Back.easeOut',
+        onComplete: () => {
+          if (epoch !== this.introEpoch) {
+            nameStamp.destroy(true);
+            return;
+          }
+          audio.play('stampThud');
+          this.cameras.main.shake(150, 0.008);
+          this.tweens.add({ targets: [this.boss], y: BOSS_HOVER_Y + 12, duration: 100, yoyo: true });
+          this.tweens.add({ targets: podium, y: 164, duration: 100 });
+          pixelBurst(this, BOSS_HOVER_X, BOSS_HOVER_Y + 35, COLORS.warning, 8, 0.8);
+          this.time.delayedCall(260, () => {
+            if (epoch !== this.introEpoch) {
+              return;
+            }
+            this.tweens.add({
+              targets: nameStamp,
+              x: GAME_WIDTH - 300,
+              y: 64,
+              scale: 0.35,
+              alpha: 0.15,
+              duration: 480,
+              ease: 'Cubic.easeIn',
+              onComplete: () => nameStamp.destroy(true),
+            });
+          });
+        },
+      });
+    });
+
+    this.time.delayedCall(3440, () => {
+      if (epoch !== this.introEpoch) {
+        return;
+      }
+      caption.setText(STRINGS.boss.cinematic.selfStamp);
+      this.cameras.main.zoomTo(1.06, 420, 'Sine.easeInOut');
+      this.cameras.main.pan(GAME_WIDTH / 2, 390, 420, 'Sine.easeInOut');
+    });
+
+    this.time.delayedCall(BOSS.introMs, () => {
+      if (epoch === this.introEpoch) {
+        this.finishIntro(false);
+      }
+    });
+  }
+
+  private finishIntro(skipped: boolean): void {
+    if (!this.introActive || this.finished) {
+      return;
+    }
+    this.introActive = false;
+    this.introEpoch += 1;
+    this.registry.set('bossIntroSeen', true);
+    if (this.introSkipHandler) {
+      this.input.keyboard?.off('keydown-SPACE', this.introSkipHandler);
+      this.introSkipHandler = null;
+    }
+    this.introWorld?.destroy(true);
+    this.introWorld = null;
+    this.introUi?.destroy(true);
+    this.introUi = null;
+    this.introProjection?.destroy(true);
+    this.introProjection = null;
+    this.tweens.killTweensOf(this.boss);
+    this.boss.setPosition(BOSS_HOVER_X, BOSS_HOVER_Y);
+    this.boss.setAngle(0);
+    this.cameras.main.zoomTo(1, 320, 'Sine.easeInOut');
+    this.cameras.main.pan(GAME_WIDTH / 2, GAME_HEIGHT / 2, 320, 'Sine.easeInOut');
+    this.input.keyboard?.resetKeys();
+    if (skipped) {
+      this.hud.toast('已跳过登场。', 'paper');
+    }
+    this.time.delayedCall(90, () => {
+      if (this.finished) {
+        return;
+      }
+      this.player.setControlEnabled(true);
+      this.touch?.setEnabled(true);
+      this.startFight();
+    });
+  }
+
+  private startFight(): void {
+    if (this.finished || this.fightStarted) {
+      return;
+    }
+    this.fightStarted = true;
+    this.boss.setInvulnerable(0);
+    this.nextAttackAt = this.time.now + 900;
+    this.nextSpecialAt = this.time.now + BOSS.firstSpecialDelayMs;
+    this.hud.toast('认出梗，就能把发布会打回去。', 'neon');
+    this.time.delayedCall(650, () => {
+      if (this.finished || this.parryActive) {
+        return;
+      }
+      const warning = addHotTag(this, BOSS_HOVER_X - 70, 372, '首招预警 · 盯住讲台右侧', COLORS.warning, -0.02);
+      warning.setDepth(97);
+      this.tweens.add({
+        targets: warning,
+        alpha: 0,
+        delay: 1100,
+        duration: 320,
+        onComplete: () => warning.destroy(),
+      });
     });
   }
 
@@ -848,6 +1243,8 @@ export class BossScene extends Phaser.Scene {
     audio.play('stagger');
     if (special === 'radish_stamping') {
       this.performRadishSpecial(phase);
+    } else if (special === 'auto_signing') {
+      this.performSigningSpecial(phase);
     } else {
       this.openParryQuiz(phase);
     }
@@ -857,7 +1254,9 @@ export class BossScene extends Phaser.Scene {
     const label =
       special === 'radish_stamping'
         ? '特殊招式 · 新品自动分类'
-        : STRINGS.boss.specialPrompt;
+        : special === 'auto_signing'
+          ? '特殊招式 · 全自动签收'
+          : STRINGS.boss.specialPrompt;
     const specialTag = addHotTag(this, this.boss.x, this.boss.y - 170, label, COLORS.rust, -0.02);
     specialTag.setDepth(97);
     this.tweens.add({
@@ -958,6 +1357,7 @@ export class BossScene extends Phaser.Scene {
     const spotlight = this.add.ellipse(STAGE_RADISH_X + 8, 560, 340, 160, COLORS.warning, 0.07);
     dim.add(spotlight);
     this.specialDim = dim;
+    this.boss.clearTint();
     this.tweens.add({ targets: dimRect, alpha: 1, duration: 260, ease: 'Sine.easeOut' });
 
     const props = this.add.container(0, 0);
@@ -1099,14 +1499,184 @@ export class BossScene extends Phaser.Scene {
     });
   }
 
+  /** 第二拍的反向演出：签收联挡住前两枚章，第三枚弹回围兜。 */
+  private performSigningSpecial(phase: BossPhase): void {
+    const epoch = this.specialEpoch;
+    const dim = this.add.container(0, 0);
+    dim.setDepth(STAGE_DIM_DEPTH);
+    const dimRect = this.add.graphics();
+    dimRect.fillStyle(COLORS.coal, 0.5);
+    dimRect.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    dimRect.setAlpha(0);
+    dim.add(dimRect);
+    const spotlight = this.add.ellipse(STAGE_RADISH_X, 470, 430, 300, COLORS.warning, 0.08);
+    dim.add(spotlight);
+    this.specialDim = dim;
+    this.boss.clearTint();
+    this.tweens.add({ targets: dimRect, alpha: 1, duration: 240, ease: 'Sine.easeOut' });
+
+    const props = this.add.container(0, 0);
+    props.setDepth(STAGE_PROP_DEPTH);
+    this.specialProps = props;
+    this.lockPlayerForStage(300);
+    addFloatingLine(this, this.boss.x - 30, this.boss.y - 140, STRINGS.boss.cinematic.signingAnnounce, COLORS.warning, 19, 1900);
+
+    const receipt = this.add.container(STAGE_RADISH_X, 486);
+    const rg = this.add.graphics();
+    rg.fillStyle(COLORS.coal, 0.96);
+    rg.fillRect(-182, -118, 364, 236);
+    rg.fillStyle(COLORS.paper, 1);
+    rg.fillRect(-174, -110, 348, 220);
+    rg.lineStyle(3, COLORS.rust, 0.86);
+    rg.strokeRect(-174, -110, 348, 220);
+    rg.fillStyle(COLORS.warning, 0.85);
+    rg.fillRect(-174, -110, 348, 20);
+    rg.fillStyle(COLORS.paperDim, 0.6);
+    for (let y = -70; y < 88; y += 28) {
+      rg.fillRect(-150, y, 300, 1);
+    }
+    rg.fillStyle(COLORS.coal, 0.5);
+    for (let x = -146; x < 140; x += 12) {
+      rg.fillRect(x, 80, 4, 10);
+    }
+    const receiptHeader = this.add.text(0, -100, '代 签 单 · 回 收', {
+      fontFamily: FONTS.display,
+      fontSize: '20px',
+      color: CSS.coal,
+      fontStyle: 'bold',
+    });
+    receiptHeader.setOrigin(0.5);
+    const lines = [
+      '收件人　甄领先',
+      '代签人　甄建国',
+      '与收件人关系　父',
+    ];
+    const lineTexts = lines.map((line, i) => {
+      const txt = this.add.text(-146, -56 + i * 38, line, {
+        fontFamily: FONTS.body,
+        fontSize: '24px',
+        color: CSS.coal,
+        fontStyle: 'bold',
+      });
+      txt.setOrigin(0, 0.5);
+      return txt;
+    });
+    receipt.add([rg, receiptHeader, ...lineTexts]);
+    receipt.setScale(0.1, 1);
+    receipt.setAlpha(0);
+    props.add(receipt);
+    this.specialReceipt = receipt;
+
+    this.time.delayedCall(260, () => {
+      if (epoch !== this.specialEpoch) {
+        return;
+      }
+      audio.play('paper');
+      this.tweens.add({ targets: receipt, scaleX: 1, alpha: 1, duration: 620, ease: 'Back.easeOut' });
+    });
+
+    const stampViews: Phaser.GameObjects.Container[] = [];
+    [470, 640, 810].forEach((x, index) => {
+      const s = this.buildStageStamp(STRINGS.boss.cinematic.signingDone);
+      s.setPosition(x, 180 - index * 16);
+      s.setScale(0.2);
+      s.setAlpha(0);
+      props.add(s);
+      stampViews.push(s);
+      this.time.delayedCall(980 + index * 260, () => {
+        if (epoch !== this.specialEpoch) {
+          return;
+        }
+        audio.play('stampThud');
+        this.tweens.add({ targets: s, scale: 1, alpha: 1, duration: 220, ease: 'Back.easeOut' });
+      });
+    });
+    this.specialStamps = stampViews;
+    this.specialStampView = stampViews[2] ?? null;
+
+    this.time.delayedCall(2920, () => {
+      if (epoch !== this.specialEpoch || this.finished) {
+        return;
+      }
+      this.releasePlayerFromStage();
+      this.openParryQuiz(phase);
+    });
+  }
+
+  private playSigningCounterFx(): void {
+    audio.play('scan');
+    const receipt = this.specialReceipt;
+    const stamps = this.specialStamps;
+    if (receipt && receipt.active) {
+      this.tweens.add({ targets: receipt, scaleX: 1.18, scaleY: 1.06, duration: 170, yoyo: true });
+    }
+    this.spawnTailWhip(this.boss.x - 10, this.boss.y + 20);
+    const first = stamps[0];
+    const second = stamps[1];
+    const third = stamps[2];
+    if (first?.active) {
+      this.tweens.add({ targets: first, x: 600, y: 500, angle: -12, alpha: 0, duration: 260, ease: 'Cubic.easeIn', onComplete: () => first.destroy(true) });
+    }
+    if (second?.active) {
+      this.tweens.add({ targets: second, x: 680, y: 500, angle: 10, alpha: 0, duration: 300, ease: 'Cubic.easeIn', onComplete: () => second.destroy(true) });
+    }
+    if (third?.active) {
+      this.tweens.add({
+        targets: third,
+        x: BOSS_HOVER_X,
+        y: BOSS_HOVER_Y + 10,
+        scale: 0.72,
+        angle: 8,
+        duration: 360,
+        ease: 'Cubic.easeIn',
+        onComplete: () => {
+          audio.play('stampThud');
+          this.cameras.main.shake(120, 0.008);
+          pixelBurst(this, BOSS_HOVER_X, BOSS_HOVER_Y + 8, COLORS.warning, 9, 0.8);
+          const bib = stamp(this, BOSS_HOVER_X, BOSS_HOVER_Y + 12, STRINGS.boss.cinematic.signingDone, {
+            color: COLORS.rust,
+            fontSize: 21,
+            angle: 0.08,
+            alpha: 0.96,
+          });
+          bib.setDepth(142);
+          bib.setScale(1.7);
+          this.tweens.add({ targets: bib, scale: 1, duration: 180, ease: 'Back.easeOut' });
+          third.destroy(true);
+          this.time.delayedCall(2600, () => {
+            this.tweens.add({ targets: bib, alpha: 0, duration: 360, onComplete: () => bib.destroy(true) });
+          });
+        },
+      });
+    }
+  }
+
+  private spawnTailWhip(targetX: number, targetY: number): void {
+    const tail = this.add.graphics();
+    tail.setDepth(141);
+    const curve = new Phaser.Curves.QuadraticBezier(
+      new Phaser.Math.Vector2(this.player.x + 26, this.player.y - 4),
+      new Phaser.Math.Vector2(this.player.x + 120, this.player.y - 190),
+      new Phaser.Math.Vector2(targetX, targetY),
+    );
+    const points = curve.getPoints(18);
+    tail.lineStyle(9, COLORS.paper, 0.96);
+    tail.strokePoints(points);
+    tail.lineStyle(3, COLORS.rust, 0.8);
+    tail.strokePoints(points);
+    audio.play('paper');
+    this.tweens.add({ targets: tail, alpha: 0, duration: 360, onComplete: () => tail.destroy() });
+  }
+
   /** 答对后的第三拍·享受反击：印章飞回 Boss 额头，机器人把他认成“待浇水作物”。 */
   private playRadishCounterFx(): void {
+    audio.play('scan');
     const stampView = this.specialStampView;
     if (stampView && stampView.active) {
       this.tweens.add({
         targets: stampView,
         x: this.boss.x,
-        y: this.boss.y - 96,
+        y: this.boss.y + 6,
         angle: -8,
         duration: 240,
         ease: 'Cubic.easeOut',
@@ -1115,26 +1685,34 @@ export class BossScene extends Phaser.Scene {
             return;
           }
           audio.play('stampThud');
-          pixelBurst(this, this.boss.x, this.boss.y - 90, COLORS.warning, 8, 0.9);
+          pixelBurst(this, this.boss.x, this.boss.y + 4, COLORS.warning, 8, 0.9);
         },
       });
     }
+    this.spawnTailWhip(this.boss.x - 20, this.boss.y + 14);
 
-    const forehead = stamp(this, BOSS_HOVER_X, BOSS_HOVER_Y - 96, '类魂', {
+    const bibLabel = stamp(this, BOSS_HOVER_X, BOSS_HOVER_Y + 10, '类魂', {
       color: COLORS.rust,
-      fontSize: 24,
-      angle: -0.12,
+      fontSize: 22,
+      angle: -0.1,
       alpha: 0.95,
     });
-    forehead.setDepth(122);
-    forehead.setScale(1.9);
-    this.tweens.add({ targets: forehead, scale: 1, duration: 200, ease: 'Back.easeOut' });
-    this.time.delayedCall(BOSS.staggerMs, () => {
+    bibLabel.setDepth(142);
+    bibLabel.setScale(1.8);
+    this.tweens.add({ targets: bibLabel, scale: 1, duration: 200, ease: 'Back.easeOut' });
+    this.time.delayedCall(2000, () => {
+      if (!bibLabel.active) {
+        return;
+      }
+      addFloatingLine(this, this.boss.x, this.boss.y + 38, '（悄悄揭掉）', COLORS.paperDim, 13, 850);
       this.tweens.add({
-        targets: forehead,
+        targets: bibLabel,
+        x: BOSS_HOVER_X + 70,
+        y: BOSS_HOVER_Y + 48,
         alpha: 0,
-        duration: 420,
-        onComplete: () => forehead.destroy(true),
+        scale: 0.55,
+        duration: 520,
+        onComplete: () => bibLabel.destroy(true),
       });
     });
 
@@ -1165,6 +1743,8 @@ export class BossScene extends Phaser.Scene {
   private playSpecialSuccessFx(special: BossSpecialId | null): void {
     if (special === 'radish_stamping') {
       this.playRadishCounterFx();
+    } else if (special === 'auto_signing') {
+      this.playSigningCounterFx();
     }
   }
 
@@ -1203,6 +1783,8 @@ export class BossScene extends Phaser.Scene {
     this.specialProps = null;
     this.specialStampView = null;
     this.specialRobot = null;
+    this.specialReceipt = null;
+    this.specialStamps = [];
     if (fadeMs <= 0) {
       dim?.destroy(true);
       props?.destroy(true);

@@ -2,9 +2,9 @@
   {
     "id": "boss_zhen",
     "name": "甄领先",
-    "title": "遥遥集团 · 首席发布官",
+    "title": "大厦顶层 · 奶娃主持人",
     "hp": 900,
-    "intro": "欢迎来到年度发布会。今天只发布一件事：你的失败。",
+    "intro": "欢迎来到发布会。凡是会滴的东西，都是手机。",
     "defeatLine": "名字……还你。发布会……改线上。",
     "taunts": [
       "遥遥领先！",
@@ -19,7 +19,10 @@
         "fromHpPct": 1.0,
         "attackIntervalMs": 2250,
         "parryQuestionId": "parry_leihun",
-        "attackPool": ["aimed_shots", "dash_combo"],
+        "attackPool": [
+          "aimed_shots",
+          "dash_combo"
+        ],
         "staggerMs": 3200,
         "label": "常规发布 · 又是类魂",
         "special": "radish_stamping"
@@ -28,17 +31,26 @@
         "phase": 2,
         "fromHpPct": 0.66,
         "attackIntervalMs": 1850,
-        "parryQuestionId": "parry_dashui",
-        "attackPool": ["data_rain", "aimed_shots", "dash_combo"],
+        "parryQuestionId": "parry_daiqian",
+        "attackPool": [
+          "data_rain",
+          "aimed_shots",
+          "dash_combo"
+        ],
         "staggerMs": 3200,
-        "label": "数据灌水 · 跑分风暴"
+        "label": "全自动签收 · 代签人是谁",
+        "special": "auto_signing"
       },
       {
         "phase": 3,
         "fromHpPct": 0.33,
         "attackIntervalMs": 1500,
         "parryQuestionId": "parry_bangbang",
-        "attackPool": ["red_carpet_dash", "data_rain", "aimed_shots"],
+        "attackPool": [
+          "red_carpet_dash",
+          "data_rain",
+          "aimed_shots"
+        ],
         "staggerMs": 3200,
         "label": "红毯收网 · 终极发布"
       }
