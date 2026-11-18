@@ -36,11 +36,11 @@ import { QuizSystem } from '../systems/QuizSystem';
 import { elapsedMs, getRunState } from '../systems/RunState';
 import { audio } from '../systems/AudioSystem';
 
-const ISLAND_WIDTH = 3500;
+const ISLAND_WIDTH = 4300;
 const GROUND_Y = 636;
 const GROUND_SEGMENTS: Array<[number, number]> = [
   [0, 1850],
-  [2130, 1370],
+  [2130, 2170],
 ];
 const PLATFORMS: Array<[number, number, number, number]> = [
   [420, 520, 170, 26],
@@ -48,12 +48,16 @@ const PLATFORMS: Array<[number, number, number, number]> = [
   [1130, 524, 150, 24],
   [1460, 458, 180, 26],
   [2290, 512, 210, 26],
-  [2620, 448, 180, 26],
-  [2880, 520, 160, 24],
+  [2480, 448, 180, 26],
+  [3520, 500, 200, 26],
+  [3820, 444, 170, 26],
 ];
 const GATE1_X = 1760;
 const CHECKPOINT_X = 2260;
-const EXIT_X = 3220;
+const GATE2_X = 2860;
+const CHECKPOINT2_X = 3360;
+const SHELF_X = 3060;
+const EXIT_X = 4070;
 const BRIDGE_X = 1990;
 const BRIDGE_WIDTH = 280;
 
@@ -77,15 +81,26 @@ export class IslandScene extends Phaser.Scene {
   private bridgeVisual: Phaser.GameObjects.Container | null = null;
   private bridgeBarrier: Phaser.GameObjects.Rectangle | null = null;
   private bridgeCollider: Phaser.Physics.Arcade.Collider | null = null;
+  private gate2Light: Phaser.GameObjects.Arc | null = null;
+  private gate2Shelf: Phaser.GameObjects.Container | null = null;
+  private gate2Rope: Phaser.GameObjects.Graphics | null = null;
+  private gate2BucketFill: Phaser.GameObjects.Graphics | null = null;
+  private gate2BucketLabel: Phaser.GameObjects.Text | null = null;
+  private gate2Barrier: Phaser.GameObjects.Rectangle | null = null;
+  private gate2Collider: Phaser.Physics.Arcade.Collider | null = null;
+  private gate2Epoch = 0;
   private tutorialCrate: Phaser.GameObjects.Container | null = null;
   private tutorialDrone: Phaser.GameObjects.Image | null = null;
   private viewfinder: Viewfinder | null = null;
   private gate1Passed = false;
   private gate1DemoDone = false;
+  private gate2Passed = false;
+  private gate2DemoDone = false;
   private quizOpen = false;
   private rewardOpen = false;
   private gateAnimating = false;
   private nearGate1 = false;
+  private nearGate2 = false;
   private nearExit = false;
   private respawning = false;
   private finished = false;
@@ -93,6 +108,7 @@ export class IslandScene extends Phaser.Scene {
   private tutorialStarted = false;
   private tutorialEpoch = 0;
   private checkpointToasted = false;
+  private checkpoint2Toasted = false;
   private spawnPoint = { x: 150, y: 560 };
   private pendingReason = STRINGS.act2.deathReason;
   private cardsChangedHandler: (() => void) | null = null;
@@ -109,15 +125,25 @@ export class IslandScene extends Phaser.Scene {
     this.finished = false;
     this.transitioning = false;
     this.gate1DemoDone = false;
+    this.gate2DemoDone = false;
     this.tutorialStarted = false;
     this.tutorialEpoch = 0;
     this.checkpointToasted = false;
+    this.checkpoint2Toasted = false;
     this.ally = null;
     this.quizOverlay = null;
     this.gate1Light = null;
     this.bridgeVisual = null;
     this.bridgeBarrier = null;
     this.bridgeCollider = null;
+    this.gate2Light = null;
+    this.gate2Shelf = null;
+    this.gate2Rope = null;
+    this.gate2BucketFill = null;
+    this.gate2BucketLabel = null;
+    this.gate2Barrier = null;
+    this.gate2Collider = null;
+    this.gate2Epoch = 0;
     this.tutorialCrate = null;
     this.tutorialDrone = null;
     this.viewfinder = null;
@@ -131,9 +157,12 @@ export class IslandScene extends Phaser.Scene {
       this.run.hp = PLAYER.maxHp;
     }
     this.gate1Passed = this.run.act2Door1Passed;
-    this.spawnPoint = this.gate1Passed
-      ? { x: CHECKPOINT_X, y: 560 }
-      : { x: 150, y: 560 };
+    this.gate2Passed = this.run.act2Door2Passed;
+    this.spawnPoint = this.gate2Passed
+      ? { x: CHECKPOINT2_X, y: 560 }
+      : this.gate1Passed
+        ? { x: CHECKPOINT_X, y: 560 }
+        : { x: 150, y: 560 };
     this.pendingReason = STRINGS.act2.deathReason;
 
     this.physics.world.setBounds(0, 0, ISLAND_WIDTH, 1000);
@@ -147,6 +176,8 @@ export class IslandScene extends Phaser.Scene {
     this.buildTutorialSet();
     this.buildGate1Set();
     this.buildCheckpoint();
+    this.buildGate2Set();
+    this.buildCheckpoint(CHECKPOINT2_X, '滑轮营地');
     this.buildExitSet();
 
     this.player = new Player(this, this.spawnPoint.x, this.spawnPoint.y, this.run.hp, this.makePlayerCallbacks());
@@ -159,8 +190,10 @@ export class IslandScene extends Phaser.Scene {
     this.setupCamera();
     this.eKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.E) ?? null;
 
-    this.showIntro();
-    this.time.delayedCall(2600, () => this.startTutorial());
+    if (!this.gate1Passed) {
+      this.showIntro();
+      this.time.delayedCall(2600, () => this.startTutorial());
+    }
     addScanlines(this, 90);
     this.events.once('shutdown', () => this.cleanupScene());
   }
@@ -188,6 +221,10 @@ export class IslandScene extends Phaser.Scene {
     if (this.gate1Passed && !this.checkpointToasted && this.player.x > CHECKPOINT_X - 40) {
       this.checkpointToasted = true;
       this.hud.toast(STRINGS.act2.checkpoint, 'paper');
+    }
+    if (this.gate2Passed && !this.checkpoint2Toasted && this.player.x > CHECKPOINT2_X - 40) {
+      this.checkpoint2Toasted = true;
+      this.hud.toast(STRINGS.act2.checkpoint2, 'paper');
     }
 
     this.hud.updatePlayer(this.player.getHp(), this.player.getMaxHp());
@@ -223,7 +260,10 @@ export class IslandScene extends Phaser.Scene {
   }
 
   private buildBackground(): void {
-    this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, TEX.islandSky).setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
+    const sky = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, TEX.islandSky);
+    sky.setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
+    sky.setScrollFactor(0);
+    sky.setDepth(-30);
     this.midLayer = this.add.tileSprite(0, 270, GAME_WIDTH, 420, TEX.islandMid);
     this.midLayer.setOrigin(0);
     this.midLayer.setScrollFactor(0);
@@ -280,6 +320,7 @@ export class IslandScene extends Phaser.Scene {
 
     const backlight = this.add.graphics();
     backlight.setDepth(-12);
+    backlight.setScrollFactor(0);
     backlight.fillStyle(COLORS.warning, 0.05);
     backlight.fillTriangle(890, 90, 1280, 0, 1280, 480);
     backlight.fillStyle(COLORS.paper, 0.04);
@@ -674,8 +715,199 @@ export class IslandScene extends Phaser.Scene {
     }
   }
 
-  private buildCheckpoint(): void {
-    const root = this.add.container(CHECKPOINT_X, 574);
+  private buildGate2Set(): void {
+    const post = this.add.container(GATE2_X, 468);
+    post.setDepth(14);
+    const g = this.add.graphics();
+    g.fillStyle(COLORS.coal, 0.8);
+    g.fillRect(-8, -166, 16, 322);
+    g.fillRect(-72, -166, 144, 12);
+    g.fillStyle(0x5a4d3a, 1);
+    g.fillRect(-68, 140, 136, 16);
+    g.fillStyle(COLORS.paper, 0.95);
+    g.fillRect(-58, -138, 116, 82);
+    g.lineStyle(2, COLORS.coal, 0.8);
+    g.strokeRect(-58, -138, 116, 82);
+    g.fillStyle(COLORS.rust, 0.9);
+    g.fillRect(-58, -138, 116, 12);
+    g.fillStyle(COLORS.coal, 0.35);
+    g.fillRect(-42, -110, 84, 4);
+    g.fillRect(-42, -98, 60, 3);
+    g.fillRect(-42, -86, 76, 3);
+    post.add(g);
+    const title = this.add.text(0, -122, '雨 棚 货 架', {
+      fontFamily: FONTS.mono,
+      fontSize: '12px',
+      color: CSS.paper,
+      fontStyle: 'bold',
+    });
+    title.setOrigin(0.5);
+    const code = this.add.text(0, -78, '这是好事呀', {
+      fontFamily: FONTS.display,
+      fontSize: '17px',
+      color: CSS.coal,
+      fontStyle: 'bold',
+    });
+    code.setOrigin(0.5);
+    const light = this.add.circle(56, -156, 7, this.gate2Passed ? COLORS.neon : COLORS.rust);
+    light.setStrokeStyle(2, COLORS.coal, 1);
+    post.add([title, code, light]);
+    this.gate2Light = light;
+    if (this.gate2Passed) {
+      post.setAlpha(0.62);
+    }
+
+    const canopy = this.add.graphics();
+    canopy.setDepth(4);
+    canopy.fillStyle(0x4b5642, 0.9);
+    canopy.fillRect(2840, 270, 226, 18);
+    canopy.fillStyle(0x59614b, 0.9);
+    canopy.fillRect(2840, 270, 226, 5);
+    canopy.lineStyle(2, COLORS.coal, 0.7);
+    canopy.strokeRect(2840, 270, 226, 18);
+    canopy.lineStyle(2, COLORS.paperDark, 0.55);
+    canopy.lineBetween(2860, 270, 2860, 236);
+    canopy.lineBetween(3038, 270, 3038, 236);
+    canopy.fillStyle(COLORS.coal, 0.35);
+    canopy.fillRect(2904, 272, 22, 14);
+    const canopyTag = addHotTag(this, 2860, 224, '这是好事呀', COLORS.warning, -0.025);
+    canopyTag.setDepth(16);
+
+    const droplet = this.add.graphics();
+    droplet.setDepth(5);
+    droplet.fillStyle(COLORS.neon, 0.75);
+    droplet.fillCircle(2922, 296, 4);
+    droplet.fillRect(2920, 292, 4, 8);
+    droplet.fillStyle(COLORS.neon, 0.45);
+    droplet.fillCircle(2952, 296, 3);
+
+    const pulley = this.add.graphics();
+    pulley.setDepth(6);
+    pulley.lineStyle(3, COLORS.coal, 0.85);
+    pulley.strokeCircle(2992, 306, 18);
+    pulley.lineStyle(1, COLORS.warning, 0.8);
+    pulley.strokeCircle(2992, 306, 9);
+    pulley.lineBetween(2992, 288, 2992, 246);
+
+    const bucket = this.add.container(2952, 560);
+    bucket.setDepth(15);
+    const bucketBody = this.add.graphics();
+    bucketBody.fillStyle(0x5a4d3a, 1);
+    bucketBody.fillRect(-24, -30, 48, 54);
+    bucketBody.fillStyle(0x7a6a4f, 1);
+    bucketBody.fillRect(-24, -30, 48, 6);
+    bucketBody.lineStyle(2, COLORS.coal, 0.8);
+    bucketBody.strokeRect(-24, -30, 48, 54);
+    bucketBody.fillStyle(COLORS.warning, 0.55);
+    bucketBody.fillRect(-20, -4, 40, 3);
+    bucket.add(bucketBody);
+    const fill = this.add.graphics();
+    bucket.add(fill);
+    this.gate2BucketFill = fill;
+    const bucketLabel = this.add.text(0, 6, this.gate2Passed ? '满桶' : '空桶', {
+      fontFamily: FONTS.mono,
+      fontSize: '9px',
+      color: CSS.paperDim,
+    });
+    bucketLabel.setOrigin(0.5);
+    bucket.add(bucketLabel);
+    this.gate2BucketLabel = bucketLabel;
+
+    const rope = this.add.graphics();
+    rope.setDepth(14);
+    this.gate2Rope = rope;
+
+    const shelf = this.add.container(SHELF_X, 636);
+    shelf.setDepth(15);
+    const sg = this.add.graphics();
+    sg.fillStyle(COLORS.coal, 0.32);
+    sg.fillRect(-62, -8, 130, 12);
+    sg.fillStyle(0x5a4d3a, 1);
+    sg.fillRect(-52, -250, 12, 250);
+    sg.fillRect(42, -250, 12, 250);
+    sg.fillStyle(0x7a6a4f, 1);
+    for (let i = 0; i < 3; i += 1) {
+      const y = -62 - i * 74;
+      sg.fillRect(-52, y, 106, 12);
+      sg.fillStyle(COLORS.coal, 0.4);
+      sg.fillRect(-48, y + 12, 98, 3);
+      sg.fillStyle(0x7a6a4f, 1);
+    }
+    sg.fillStyle(COLORS.paper, 0.9);
+    sg.fillRect(-40, -216, 34, 24);
+    sg.fillRect(2, -216, 30, 24);
+    sg.fillStyle(COLORS.rust, 0.8);
+    sg.fillRect(-40, -216, 34, 4);
+    sg.fillRect(2, -216, 30, 4);
+    sg.lineStyle(2, COLORS.warning, 0.65);
+    sg.strokeRect(-52, -250, 106, 250);
+    sg.fillStyle(COLORS.warning, 0.7);
+    sg.fillRect(-52, -138, 106, 4);
+    shelf.add(sg);
+    if (this.gate2Passed) {
+      shelf.setY(396);
+    }
+    this.gate2Shelf = shelf;
+    this.drawGate2Water(this.gate2Passed ? 1 : 0.12, this.gate2Passed ? 1 : 0);
+    this.drawGate2Rope();
+
+    if (!this.gate2Passed) {
+      const barrier = this.add.rectangle(SHELF_X, 511, 118, 250, 0x000000, 0);
+      this.physics.add.existing(barrier, true);
+      this.gate2Barrier = barrier;
+    }
+
+    for (let i = 0; i < 3; i += 1) {
+      const drop = this.add.image(2906 + i * 34, 320, TEX.spark);
+      drop.setTint(COLORS.neon);
+      drop.setDepth(5);
+      drop.setScale(0.35, 0.7);
+      drop.setAlpha(0.5);
+      this.tweens.add({
+        targets: drop,
+        y: 542,
+        alpha: 0,
+        duration: 900,
+        delay: i * 500,
+        repeat: -1,
+        onRepeat: () => {
+          drop.setPosition(2906 + i * 34, 320);
+          drop.setAlpha(0.5);
+        },
+      });
+    }
+  }
+
+  private drawGate2Water(ratio: number, dropBottom: number): void {
+    const fill = this.gate2BucketFill;
+    if (!fill) {
+      return;
+    }
+    const height = 36 * Phaser.Math.Clamp(ratio, 0, 1);
+    fill.clear();
+    fill.fillStyle(COLORS.neon, 0.5);
+    fill.fillRect(-20, 20 - height + dropBottom, 40, height);
+    fill.fillStyle(COLORS.neon, 0.7);
+    fill.fillRect(-20, 20 - height + dropBottom, 40, 2);
+  }
+
+  private drawGate2Rope(): void {
+    const rope = this.gate2Rope;
+    const shelf = this.gate2Shelf;
+    if (!rope || !shelf) {
+      return;
+    }
+    rope.clear();
+    rope.lineStyle(2, COLORS.coal, 0.6);
+    rope.lineBetween(2952, 534, 2992, 306);
+    rope.lineBetween(2992, 306, SHELF_X - 46, shelf.y - 250);
+    rope.lineStyle(1, COLORS.warning, 0.55);
+    rope.lineBetween(2952, 532, 2992, 304);
+    rope.lineBetween(2992, 304, SHELF_X - 46, shelf.y - 248);
+  }
+
+  private buildCheckpoint(x = CHECKPOINT_X, labelText = '临时营地'): void {
+    const root = this.add.container(x, 574);
     root.setDepth(13);
     const g = this.add.graphics();
     g.fillStyle(COLORS.coal, 0.22);
@@ -689,7 +921,7 @@ export class IslandScene extends Phaser.Scene {
     g.lineStyle(2, COLORS.coal, 0.7);
     g.strokeRect(-56, 22, 70, 30);
     root.add(g);
-    const label = this.add.text(-21, 37, '临时营地', {
+    const label = this.add.text(-21, 37, labelText, {
       fontFamily: FONTS.mono,
       fontSize: '10px',
       color: CSS.coal,
@@ -786,7 +1018,7 @@ export class IslandScene extends Phaser.Scene {
   }
 
   private startTutorial(): void {
-    if (this.finished || this.tutorialStarted) {
+    if (this.finished || this.tutorialStarted || this.gate1Passed) {
       return;
     }
     this.tutorialStarted = true;
@@ -969,7 +1201,7 @@ export class IslandScene extends Phaser.Scene {
     const host = this.makeCrabHost();
     const placements: Array<[number, number]> = [
       [1370, 598],
-      [2580, 598],
+      [3200, 598],
     ];
     placements.forEach(([x, y]) => {
       const crab = new SupplyCrab(this, x, y, host);
@@ -1009,6 +1241,9 @@ export class IslandScene extends Phaser.Scene {
     this.physics.add.collider(this.player, this.solids);
     if (this.bridgeBarrier) {
       this.bridgeCollider = this.physics.add.collider(this.player, this.bridgeBarrier);
+    }
+    if (this.gate2Barrier) {
+      this.gate2Collider = this.physics.add.collider(this.player, this.gate2Barrier);
     }
     this.physics.add.collider(this.crabGroup, this.solids);
     this.physics.add.collider(this.bullets, this.solids, (a, b) => {
@@ -1091,6 +1326,8 @@ export class IslandScene extends Phaser.Scene {
 
   private updateInteractions(): void {
     this.nearGate1 = !this.gate1Passed && Math.abs(this.player.x - GATE1_X) < 150;
+    this.nearGate2 =
+      this.gate1Passed && !this.gate2Passed && Math.abs(this.player.x - GATE2_X) < 170;
     this.nearExit = Math.abs(this.player.x - EXIT_X) < 180;
 
     if (this.quizOpen || this.rewardOpen || this.gateAnimating) {
@@ -1100,8 +1337,18 @@ export class IslandScene extends Phaser.Scene {
     if (this.nearGate1) {
       const prompt = this.gate1DemoDone ? STRINGS.act2.gate1Retry : STRINGS.act2.gate1Prompt;
       this.hud.setHint(this.touch ? prompt.replace('按 E', '点「交互」') : prompt);
+    } else if (this.nearGate2) {
+      const prompt = this.gate2DemoDone ? STRINGS.act2.gate2Retry : STRINGS.act2.gate2Prompt;
+      this.hud.setHint(this.touch ? prompt.replace('按 E', '点「交互」') : prompt);
     } else if (this.nearExit) {
-      const prompt = this.gate1Passed ? STRINGS.act2.exitPrompt : STRINGS.act2.gate1Locked;
+      let prompt: string;
+      if (!this.gate1Passed) {
+        prompt = STRINGS.act2.gate1Locked;
+      } else if (!this.gate2Passed) {
+        prompt = STRINGS.act2.bossLocked;
+      } else {
+        prompt = STRINGS.act2.exitPrompt;
+      }
       this.hud.setHint(this.touch ? prompt.replace('按 E', '点「交互」') : prompt);
     } else {
       this.hud.setHint(null);
@@ -1120,9 +1367,17 @@ export class IslandScene extends Phaser.Scene {
       this.startGate1Sequence();
       return;
     }
+    if (this.nearGate2) {
+      this.startGate2Sequence();
+      return;
+    }
     if (this.nearExit) {
       if (!this.gate1Passed) {
         this.hud.toast(STRINGS.act2.gate1Locked, 'rust');
+        return;
+      }
+      if (!this.gate2Passed) {
+        this.hud.toast(STRINGS.act2.bossLocked, 'rust');
         return;
       }
       this.enterBoss();
@@ -1452,6 +1707,197 @@ export class IslandScene extends Phaser.Scene {
     this.time.delayedCall(1150, () => this.showCardReward());
   }
 
+  private startGate2Sequence(): void {
+    if (this.quizOpen || this.rewardOpen || this.gate2Passed || this.finished || this.gateAnimating) {
+      return;
+    }
+    this.gate2DemoDone = true;
+    this.beginGateLock();
+    this.gate2Epoch += 1;
+    const epoch = this.gate2Epoch;
+    this.hud.toast(STRINGS.act2.gate2Demo, 'paper');
+    audio.play('waterDrip');
+
+    for (let i = 0; i < 10; i += 1) {
+      const drop = this.add.image(2906 + (i % 5) * 28, 300, TEX.spark);
+      drop.setTint(COLORS.neon);
+      drop.setDepth(44);
+      drop.setScale(0.32, 0.7);
+      this.tweens.add({
+        targets: drop,
+        y: 548,
+        alpha: 0.2,
+        duration: 620,
+        delay: i * 130,
+        ease: 'Quad.easeIn',
+        onComplete: () => {
+          drop.destroy();
+          if (i % 2 === 0 && epoch === this.gate2Epoch) {
+            audio.play('waterDrip');
+          }
+        },
+      });
+    }
+
+    if (this.gate2BucketFill) {
+      this.tweens.addCounter({
+        from: 0.12,
+        to: 0.78,
+        duration: 1900,
+        delay: 260,
+        onUpdate: (tween) => {
+          if (epoch !== this.gate2Epoch) {
+            return;
+          }
+          const value = tween.getValue() ?? 0.12;
+          this.drawGate2Water(value, 0);
+        },
+      });
+    }
+    audio.play('ropeTension');
+    if (this.gate2Shelf) {
+      this.tweens.add({
+        targets: this.gate2Shelf,
+        y: 590,
+        duration: 900,
+        delay: 900,
+        ease: 'Sine.easeInOut',
+        yoyo: true,
+        hold: 260,
+        onUpdate: () => this.drawGate2Rope(),
+      });
+    }
+    this.time.delayedCall(1500, () => {
+      if (epoch !== this.gate2Epoch || this.finished) {
+        return;
+      }
+      audio.play('waterDrip');
+      this.cameras.main.shake(90, 0.004);
+    });
+    this.time.delayedCall(2550, () => {
+      if (epoch !== this.gate2Epoch || this.finished) {
+        return;
+      }
+      audio.play('stampThud');
+      const tag = addHotTag(this, 2954, 412, '水桶变重 → 滑轮 → 货架', COLORS.neon, -0.02);
+      tag.setDepth(46);
+      this.tweens.add({
+        targets: tag,
+        alpha: 0,
+        delay: 900,
+        duration: 320,
+        onComplete: () => tag.destroy(),
+      });
+    });
+    this.time.delayedCall(3200, () => {
+      if (epoch !== this.gate2Epoch || this.finished) {
+        return;
+      }
+      this.openGate2Quiz();
+    });
+  }
+
+  private openGate2Quiz(): void {
+    this.quizOpen = true;
+    const prepared = this.quizSystem.prepareDoor('door_haoshi_act2');
+    let solved = false;
+    let failReason: 'wrong' | 'timeout' | null = null;
+
+    this.quizOverlay = new QuizOverlay(this, {
+      mode: 'door',
+      prepared,
+      windowMs: QUIZ.doorWindowMs,
+      onResolve: (result) => {
+        if (result.correct) {
+          solved = true;
+          this.run.stats.correct += 1;
+          this.quizSystem.markDoorUsed(prepared.question.id);
+          const memeResult = this.meme.addCorrect(MEME.doorCorrect);
+          if (memeResult.burstStarted) {
+            audio.play('burst');
+            this.hud.toast(STRINGS.toasts.burst, 'neon');
+          }
+        } else {
+          if (result.timedOut) {
+            this.run.stats.timeouts += 1;
+            failReason = 'timeout';
+          } else {
+            this.run.stats.wrong += 1;
+            failReason = 'wrong';
+          }
+          this.meme.registerWrong();
+          this.hud.toast(STRINGS.quiz.memoryLost, 'rust');
+        }
+      },
+      onClose: () => {
+        this.quizOverlay = null;
+        this.quizOpen = false;
+        if (solved) {
+          this.finishGate2();
+          return;
+        }
+        this.releaseGateControls();
+        this.drawGate2Water(0.12, 0);
+        this.gate2BucketLabel?.setText('空桶');
+        this.hud.toast(failReason === 'timeout' ? STRINGS.door.timeout : STRINGS.door.wrong, 'rust');
+      },
+    });
+  }
+
+  private finishGate2(): void {
+    this.gate2Passed = true;
+    this.run.act2Door2Passed = true;
+    this.spawnPoint = { x: CHECKPOINT2_X, y: 560 };
+    this.player.heal(Math.round(PLAYER.maxHp * 0.3));
+    this.run.hp = this.player.getHp();
+    this.gate2Light?.setFillStyle(COLORS.neon, 1);
+
+    if (this.gate2Collider) {
+      this.gate2Collider.destroy();
+      this.gate2Collider = null;
+    }
+    if (this.gate2Barrier) {
+      this.gate2Barrier.destroy();
+      this.gate2Barrier = null;
+    }
+    audio.play('ropeTension');
+    this.cameras.main.shake(180, 0.007);
+    this.gate2BucketLabel?.setText('满桶');
+    if (this.gate2BucketFill) {
+      this.tweens.addCounter({
+        from: 0.78,
+        to: 1,
+        duration: 700,
+        onUpdate: (tween) => this.drawGate2Water(tween.getValue() ?? 1, 0),
+      });
+    }
+    if (this.gate2Shelf) {
+      this.tweens.add({
+        targets: this.gate2Shelf,
+        y: 396,
+        duration: 900,
+        ease: 'Cubic.easeOut',
+        onUpdate: () => this.drawGate2Rope(),
+        onComplete: () => {
+          audio.play('stampThud');
+          this.cameras.main.flash(160, 75, 227, 200, false);
+          pixelBurst(this, SHELF_X, 380, COLORS.neon, 14, 1.4);
+        },
+      });
+    }
+    const mark = stamp(this, SHELF_X, 300, '货架升空', {
+      color: COLORS.neon,
+      fontSize: 24,
+      angle: -0.08,
+      alpha: 0.86,
+    });
+    mark.setDepth(46);
+    this.tweens.add({ targets: mark, alpha: 0, delay: 1100, duration: 380, onComplete: () => mark.destroy(true) });
+    this.hud.toast(STRINGS.act2.gate2Open, 'neon');
+    this.gateAnimating = true;
+    this.time.delayedCall(1200, () => this.showCardReward());
+  }
+
   private showCardReward(): void {
     if (this.rewardOpen) {
       return;
@@ -1475,6 +1921,10 @@ export class IslandScene extends Phaser.Scene {
     }
     if (!this.gate1Passed) {
       this.hud.toast(STRINGS.act2.gate1Locked, 'rust');
+      return;
+    }
+    if (!this.gate2Passed) {
+      this.hud.toast(STRINGS.act2.bossLocked, 'rust');
       return;
     }
     this.transitioning = true;

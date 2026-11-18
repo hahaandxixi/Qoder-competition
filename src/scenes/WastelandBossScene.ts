@@ -2,10 +2,12 @@ import Phaser from 'phaser';
 import {
   BOSS,
   CARD,
+  COMBAT,
   GAME_HEIGHT,
   GAME_WIDTH,
   MEME,
   PLAYER,
+  QUIZ,
 } from '../config/balance';
 import { COLORS, CSS, FONTS, TEX } from '../config/theme';
 import { BOSS_HUANG, STRINGS } from '../data';
@@ -24,10 +26,12 @@ import { Player, type PlayerCallbacks } from '../entities/Player';
 import { Boss } from '../entities/Boss';
 import { Ally } from '../entities/Ally';
 import { Hud } from '../ui/Hud';
+import { QuizOverlay } from '../ui/QuizOverlay';
 import { TouchControls, isTouchDevice } from '../ui/TouchControls';
 import { Viewfinder } from '../ui/Viewfinder';
 import { CardSystem, type CardHost } from '../systems/CardSystem';
 import { MemeMeter } from '../systems/MemeMeter';
+import { QuizSystem } from '../systems/QuizSystem';
 import { elapsedMs, getRunState } from '../systems/RunState';
 import { audio } from '../systems/AudioSystem';
 
@@ -43,6 +47,8 @@ export class WastelandBossScene extends Phaser.Scene {
   private touch: TouchControls | null = null;
   private meme!: MemeMeter;
   private cards!: CardSystem;
+  private readonly quizSystem = new QuizSystem();
+  private quizOverlay: QuizOverlay | null = null;
   private ally: Ally | null = null;
   private bullets!: Phaser.Physics.Arcade.Group;
   private bossProjectiles!: Phaser.Physics.Arcade.Group;
@@ -50,10 +56,18 @@ export class WastelandBossScene extends Phaser.Scene {
   private fightStarted = false;
   private finished = false;
   private transitioning = false;
+  private parryActive = false;
+  private parryUsedThisPhase = false;
   private attackBusy = false;
   private attackEpoch = 0;
   private nextAttackAt = 0;
+  private nextSpecialAt = 0;
   private lastAttack: BossAttackId | null = null;
+  private pendingCardId: string | null = null;
+  private pendingPhase: BossPhase | null = null;
+  private specialDim: Phaser.GameObjects.Graphics | null = null;
+  private specialProps: Phaser.GameObjects.Container | null = null;
+  private specialEpoch = 0;
   private firstViewfinder = true;
   private pendingReason = STRINGS.act2.deathReason;
   private cardsChangedHandler: (() => void) | null = null;
@@ -74,13 +88,22 @@ export class WastelandBossScene extends Phaser.Scene {
     this.fightStarted = false;
     this.finished = false;
     this.transitioning = false;
+    this.parryActive = false;
+    this.parryUsedThisPhase = false;
     this.attackBusy = false;
     this.attackEpoch = 0;
     this.nextAttackAt = 0;
+    this.nextSpecialAt = 0;
     this.lastAttack = null;
+    this.pendingCardId = null;
+    this.pendingPhase = null;
+    this.specialDim = null;
+    this.specialProps = null;
+    this.specialEpoch = 0;
     this.firstViewfinder = true;
     this.pendingReason = STRINGS.act2.deathReason;
     this.ally = null;
+    this.quizOverlay = null;
     this.cardsChangedHandler = null;
     this.activeViewfinder = null;
     this.activeDrone = null;
@@ -163,12 +186,17 @@ export class WastelandBossScene extends Phaser.Scene {
 
       if (
         this.fightStarted &&
+        !this.parryActive &&
         !this.boss.isDead() &&
         !this.boss.isStaggered(time) &&
-        !this.attackBusy &&
-        time >= this.nextAttackAt
+        !this.attackBusy
       ) {
-        this.performAttack(time);
+        const phase = this.boss.getPhaseConfig();
+        if (phase.special && !this.parryUsedThisPhase && time >= this.nextSpecialAt) {
+          this.startParry(phase);
+        } else if (time >= this.nextAttackAt) {
+          this.performAttack(time);
+        }
       }
     }
   }
@@ -459,7 +487,7 @@ export class WastelandBossScene extends Phaser.Scene {
     this.hud = new Hud(this, {
       bossMode: true,
       onUseCard: (index) => {
-        if (this.finished || this.transitioning || this.introActive) {
+        if (this.finished || this.transitioning || this.introActive || this.parryActive) {
           return;
         }
         this.cards.useSlot(index);
@@ -794,8 +822,10 @@ export class WastelandBossScene extends Phaser.Scene {
       return;
     }
     this.fightStarted = true;
+    this.parryUsedThisPhase = false;
     this.boss.setInvulnerable(0);
     this.nextAttackAt = this.time.now + 1100;
+    this.nextSpecialAt = this.time.now + BOSS.firstSpecialDelayMs;
     this.hud.toast('荒哥：镜头跟上，这段一次过。', 'neon');
     this.time.delayedCall(650, () => {
       if (this.finished || !this.fightStarted) {
@@ -850,6 +880,8 @@ export class WastelandBossScene extends Phaser.Scene {
       this.attackViewfinder();
     } else if (attack === 'gear_toss') {
       this.attackGearToss();
+    } else if (attack === 'canopy_leak') {
+      this.attackCanopyLeak();
     }
   }
 
@@ -961,6 +993,53 @@ export class WastelandBossScene extends Phaser.Scene {
         this.attackBusy = false;
         this.nextAttackAt = Math.max(this.nextAttackAt, this.time.now + 700);
       });
+    });
+  }
+
+  private attackCanopyLeak(): void {
+    this.attackBusy = true;
+    this.attackEpoch += 1;
+    const epoch = this.attackEpoch;
+    this.hud.toast('雨棚漏水 · 离开警示圈', 'paper');
+    audio.play('waterDrip');
+    const targets = [-170, 0, 170].map((offset) => Phaser.Math.Clamp(this.player.x + offset, 120, 1160));
+    targets.forEach((x, index) => {
+      const warn = this.add.rectangle(x, 606, 56, 38, COLORS.warning, 0.24);
+      warn.setStrokeStyle(2, COLORS.warning, 0.85);
+      warn.setDepth(69);
+      const stream = this.add.graphics();
+      stream.setDepth(71);
+      stream.lineStyle(7, COLORS.neon, 0.65);
+      stream.lineBetween(x, 142, x, 592);
+      stream.lineStyle(2, COLORS.paper, 0.7);
+      stream.lineBetween(x - 8, 142, x - 8, 592);
+      stream.setAlpha(0);
+      this.time.delayedCall(560 + index * 90, () => {
+        if (epoch !== this.attackEpoch || this.finished) {
+          return;
+        }
+        audio.play('waterDrip');
+        this.tweens.add({ targets: stream, alpha: 0.85, duration: 90, yoyo: true, hold: 260 });
+        this.tweens.add({ targets: warn, alpha: 0, duration: 380 });
+        if (Math.abs(this.player.x - x) < 34 && this.player.y > 470) {
+          const actual = this.player.takeDamage(10, x);
+          if (actual > 0) {
+            this.cameras.main.shake(110, 0.007);
+            addFloatingLine(this, this.player.x, this.player.y - 82, '漏水命中', COLORS.rust, 17);
+          }
+        }
+      });
+      this.time.delayedCall(1100 + index * 90, () => {
+        warn.destroy();
+        stream.destroy();
+      });
+    });
+    this.time.delayedCall(1550, () => {
+      if (epoch !== this.attackEpoch) {
+        return;
+      }
+      this.attackBusy = false;
+      this.nextAttackAt = Math.max(this.nextAttackAt, this.time.now + 700);
     });
   }
 
@@ -1129,35 +1208,498 @@ export class WastelandBossScene extends Phaser.Scene {
     this.clearBossProjectiles();
     this.boss.setVelocity(0, 0);
     this.boss.setPosition(BOSS_HOVER_X, BOSS_HOVER_Y);
-
-    if (phase.phase >= 2) {
-      this.finished = true;
-      this.fightStarted = false;
-      this.player.setControlEnabled(false);
-      this.touch?.setEnabled(false);
-      this.hud.setHint(null);
-      this.boss.setInvulnerable(999999);
-      audio.play('stagger');
-      this.cameras.main.flash(180, 255, 247, 228, false);
-      this.cameras.main.shake(180, 0.009);
-      this.hud.toast(STRINGS.act2.bossTempClear, 'neon');
-      const mark = stamp(this, GAME_WIDTH / 2, 300, STRINGS.act2.bossTempClear, {
-        color: COLORS.rust,
-        fontSize: 34,
-        angle: -0.06,
-        alpha: 0.9,
-      });
-      mark.setScrollFactor(0);
-      mark.setDepth(445);
-      this.tweens.add({ targets: mark, scale: { from: 2, to: 1 }, duration: 260, ease: 'Back.easeOut' });
-      const done = addHotTag(this, this.boss.x, this.boss.y - 160, '镜头跟上 · 先导段收工', COLORS.warning, 0.02);
-      done.setDepth(97);
-      this.time.delayedCall(1300, () => this.finishRun(true, true));
-      return;
-    }
-
+    this.parryUsedThisPhase = false;
     this.boss.setInvulnerable(BOSS.phaseBannerMs + 300);
     this.nextAttackAt = this.time.now + 1700;
+    this.nextSpecialAt = this.time.now + 1900;
+    if (this.parryActive) {
+      this.pendingPhase = phase;
+      return;
+    }
+    this.showPhaseBanner(phase);
+  }
+
+  private showPhaseBanner(phase: BossPhase): void {
+    if (this.finished) {
+      return;
+    }
+    const root = this.add.container(GAME_WIDTH / 2, 300);
+    root.setScrollFactor(0);
+    root.setDepth(440);
+    const g = this.add.graphics();
+    g.fillStyle(COLORS.coal, 0.92);
+    g.fillRect(-420, -74, 840, 148);
+    g.lineStyle(3, COLORS.warning, 0.8);
+    g.strokeRect(-420, -74, 840, 148);
+    g.fillStyle(COLORS.rust, 0.9);
+    g.fillRect(-420, -74, 8, 148);
+    const title = glitchText(
+      this,
+      0,
+      -26,
+      `${STRINGS.boss.phaseBannerPrefix} ${phase.phase} ${STRINGS.boss.phaseBannerSuffix} · ${phase.label}`,
+      {
+        fontFamily: FONTS.display,
+        fontSize: '28px',
+        color: CSS.paper,
+        fontStyle: 'bold',
+      },
+    );
+    const taunt = this.add.text(0, 26, this.pickTaunt(), {
+      fontFamily: FONTS.body,
+      fontSize: '15px',
+      color: CSS.warning,
+    });
+    taunt.setOrigin(0.5);
+    root.add([g, title, taunt]);
+    audio.play('stagger');
+    this.cameras.main.shake(180, 0.008);
+    this.tweens.add({
+      targets: root,
+      alpha: 0,
+      y: 280,
+      delay: BOSS.phaseBannerMs - 260,
+      duration: 300,
+      onComplete: () => root.destroy(true),
+    });
+    pixelBurst(this, this.boss.x, this.boss.y, COLORS.warning, 16, 1.5);
+  }
+
+  private pickTaunt(): string {
+    const taunts = this.boss.config.taunts;
+    return taunts[Math.floor(Math.random() * taunts.length)] ?? '镜头跟上！';
+  }
+
+  private startParry(phase: BossPhase): void {
+    if (this.finished || this.parryActive || this.parryUsedThisPhase || this.boss.isDead()) {
+      return;
+    }
+    const special = phase.special;
+    if (!special) {
+      return;
+    }
+    this.parryActive = true;
+    this.parryUsedThisPhase = true;
+    this.attackEpoch += 1;
+    this.attackBusy = false;
+    this.cleanupViewfinderAttack();
+    this.clearBossProjectiles();
+    this.boss.setVelocity(0, 0);
+    this.boss.setPosition(BOSS_HOVER_X, BOSS_HOVER_Y);
+    this.boss.setTint(COLORS.neon);
+    this.pendingCardId = null;
+    this.player.setControlEnabled(false);
+    this.touch?.setEnabled(false);
+    this.hud.setHint(null);
+    this.hud.toast(
+      special === 'road_sign_drag' ? STRINGS.act2.specialWangming : STRINGS.act2.specialHaoshi,
+      'neon',
+    );
+    const tag = addHotTag(
+      this,
+      this.boss.x,
+      this.boss.y - 180,
+      special === 'road_sign_drag' ? STRINGS.act2.specialWangming : STRINGS.act2.specialHaoshi,
+      COLORS.rust,
+      -0.02,
+    );
+    tag.setDepth(97);
+    this.tweens.add({ targets: tag, alpha: 0, delay: 1300, duration: 380, onComplete: () => tag.destroy() });
+    audio.play('stagger');
+    this.specialEpoch += 1;
+    const epoch = this.specialEpoch;
+    this.buildSpecialDim();
+    if (special === 'road_sign_drag') {
+      this.playRoadSignSpecial(epoch, phase);
+    } else {
+      this.playCanopyRainSpecial(epoch, phase);
+    }
+  }
+
+  private buildSpecialDim(): void {
+    this.specialDim?.destroy();
+    this.specialDim = null;
+    this.specialProps?.destroy(true);
+    this.specialProps = null;
+    const dim = this.add.graphics();
+    dim.fillStyle(COLORS.coal, 0.48);
+    dim.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    dim.setScrollFactor(0);
+    dim.setDepth(50);
+    this.specialDim = dim;
+    const props = this.add.container(0, 0);
+    props.setDepth(60);
+    this.specialProps = props;
+  }
+
+  private playRoadSignSpecial(epoch: number, phase: BossPhase): void {
+    const props = this.specialProps;
+    if (!props) {
+      return;
+    }
+    const rope = this.add.graphics();
+    rope.lineStyle(3, COLORS.coal, 0.85);
+    rope.beginPath();
+    rope.moveTo(-20, 338);
+    rope.lineTo(620, 316);
+    rope.lineTo(1290, 292);
+    rope.strokePath();
+    rope.lineStyle(1, COLORS.warning, 0.8);
+    rope.beginPath();
+    rope.moveTo(-20, 332);
+    rope.lineTo(620, 310);
+    rope.lineTo(1290, 286);
+    rope.strokePath();
+    rope.fillStyle(COLORS.warning, 0.9);
+    rope.fillCircle(620, 316, 6);
+    const sign = this.add.container(1330, 424);
+    const sg = this.add.graphics();
+    sg.fillStyle(COLORS.paper, 0.96);
+    sg.fillRect(-86, -44, 172, 88);
+    sg.lineStyle(3, COLORS.coal, 0.85);
+    sg.strokeRect(-86, -44, 172, 88);
+    sg.fillStyle(COLORS.rust, 0.9);
+    sg.fillRect(-86, -44, 172, 8);
+    sg.fillStyle(COLORS.coal, 0.22);
+    sg.fillRect(-60, 16, 120, 3);
+    sign.add(sg);
+    const signText = this.add.text(0, 0, '唯一退路', {
+      fontFamily: FONTS.display,
+      fontSize: '25px',
+      color: CSS.coal,
+      fontStyle: 'bold',
+    });
+    signText.setOrigin(0.5);
+    sign.add(signText);
+    const drone = this.add.image(1110, 222, TEX.drone);
+    drone.setScale(1.7);
+    const cable = this.add.graphics();
+    cable.lineStyle(2, COLORS.warning, 0.75);
+    cable.lineBetween(1110, 232, 1290, 392);
+    props.add([rope, sign, drone, cable]);
+    audio.play('ropeTension');
+    this.tweens.add({
+      targets: sign,
+      x: 540,
+      angle: -0.06,
+      duration: 1500,
+      ease: 'Sine.easeInOut',
+      onUpdate: () => {
+        if (Math.random() < 0.12) {
+          pixelBurst(this, sign.x - 60, 620, COLORS.rust, 2, 0.5);
+        }
+      },
+    });
+    this.tweens.add({
+      targets: drone,
+      x: 990,
+      y: 270,
+      duration: 1500,
+      ease: 'Sine.easeInOut',
+    });
+    this.time.delayedCall(420, () => {
+      if (epoch === this.specialEpoch) {
+        audio.play('signScrape');
+      }
+    });
+    this.time.delayedCall(1050, () => {
+      if (epoch === this.specialEpoch) {
+        audio.play('signScrape');
+      }
+    });
+    this.time.delayedCall(1850, () => {
+      if (epoch !== this.specialEpoch || this.finished) {
+        return;
+      }
+      this.openParryQuiz(phase);
+    });
+  }
+
+  private playCanopyRainSpecial(epoch: number, phase: BossPhase): void {
+    const props = this.specialProps;
+    if (!props) {
+      return;
+    }
+    const canopy = this.add.graphics();
+    canopy.fillStyle(0x4b5642, 0.92);
+    canopy.fillRect(-190, -18, 380, 26);
+    canopy.fillStyle(0x59614b, 0.95);
+    canopy.fillRect(-190, -18, 380, 6);
+    canopy.lineStyle(2, COLORS.coal, 0.75);
+    canopy.strokeRect(-190, -18, 380, 26);
+    canopy.fillStyle(COLORS.coal, 0.4);
+    canopy.fillRect(64, -16, 34, 20);
+    const canopyRoot = this.add.container(this.boss.x, 150);
+    canopyRoot.add(canopy);
+    const bucket = this.add.container(this.boss.x + 18, 222);
+    const bg = this.add.graphics();
+    bg.fillStyle(0x5a4d3a, 1);
+    bg.fillRect(-32, -34, 64, 60);
+    bg.lineStyle(2, COLORS.coal, 0.8);
+    bg.strokeRect(-32, -34, 64, 60);
+    bg.fillStyle(COLORS.neon, 0.55);
+    bg.fillRect(-26, -14, 52, 34);
+    bucket.add(bg);
+    const bucketLabel = this.add.text(0, 4, '满', {
+      fontFamily: FONTS.mono,
+      fontSize: '11px',
+      color: CSS.coal,
+      fontStyle: 'bold',
+    });
+    bucketLabel.setOrigin(0.5);
+    bucket.add(bucketLabel);
+    const rope = this.add.graphics();
+    rope.lineStyle(2, COLORS.coal, 0.8);
+    rope.lineBetween(this.boss.x + 100, 80, this.boss.x + 100, 190);
+    rope.lineBetween(this.boss.x + 100, 190, this.boss.x + 34, 190);
+    const sign = this.add.container(this.boss.x - 110, 300);
+    const sg = this.add.graphics();
+    sg.fillStyle(COLORS.paper, 0.95);
+    sg.fillRect(-88, -36, 176, 72);
+    sg.lineStyle(2, COLORS.coal, 0.8);
+    sg.strokeRect(-88, -36, 176, 72);
+    sg.fillStyle(COLORS.rust, 0.85);
+    sg.fillRect(-88, -36, 176, 6);
+    sign.add(sg);
+    const signText = this.add.text(0, 2, '这是好事呀', {
+      fontFamily: FONTS.display,
+      fontSize: '20px',
+      color: CSS.coal,
+      fontStyle: 'bold',
+    });
+    signText.setOrigin(0.5);
+    sign.add(signText);
+    props.add([canopyRoot, bucket, rope, sign]);
+    audio.play('waterDrip');
+    for (let i = 0; i < 12; i += 1) {
+      const drop = this.add.image(this.boss.x - 60 + (i % 4) * 34, 166, TEX.spark);
+      drop.setTint(COLORS.neon);
+      drop.setDepth(61);
+      drop.setScale(0.35, 0.8);
+      props.add(drop);
+      this.tweens.add({
+        targets: drop,
+        y: 260,
+        alpha: 0,
+        duration: 620,
+        delay: i * 80,
+        repeat: 1,
+        onRepeat: () => {
+          drop.setPosition(this.boss.x - 60 + (i % 4) * 34, 166);
+          drop.setAlpha(0.75);
+        },
+      });
+    }
+    this.tweens.add({
+      targets: bucket,
+      angle: { from: -4, to: 5 },
+      duration: 680,
+      yoyo: true,
+      repeat: 1,
+      ease: 'Sine.easeInOut',
+    });
+    this.time.delayedCall(780, () => {
+      if (epoch === this.specialEpoch) {
+        audio.play('ropeTension');
+        this.cameras.main.shake(140, 0.006);
+      }
+    });
+    this.time.delayedCall(1850, () => {
+      if (epoch !== this.specialEpoch || this.finished) {
+        return;
+      }
+      this.openParryQuiz(phase);
+    });
+  }
+
+  private openParryQuiz(phase: BossPhase): void {
+    const prepared = this.quizSystem.prepareParry(phase.parryQuestionId);
+    this.quizOverlay = new QuizOverlay(this, {
+      mode: 'parry',
+      prepared,
+      windowMs: QUIZ.parryWindowMs,
+      onResolve: (result) => {
+        if (this.finished) {
+          return;
+        }
+        if (result.correct) {
+          this.run.stats.correct += 1;
+          this.run.stats.parries += 1;
+          const memeResult = this.meme.addCorrect(MEME.bossCorrect);
+          if (memeResult.burstStarted) {
+            audio.play('burst');
+            this.hud.toast(STRINGS.toasts.burst, 'neon');
+          }
+          this.pendingCardId = prepared.question.cardId;
+          this.playSpecialSuccessFx(phase.special ?? null);
+          this.boss.takeDamage(BOSS.reflectDamage);
+          if (!this.finished && !this.boss.isDead()) {
+            this.boss.setStagger(phase.staggerMs + (phase.phase === 3 ? 1100 : 0));
+            this.clearBossProjectiles();
+            this.cameras.main.flash(220, 255, 247, 228, false);
+            this.cameras.main.shake(230, 0.016);
+            this.physics.world.pause();
+            this.time.delayedCall(COMBAT.hitstopHeavyMs, () => this.physics.world.resume());
+            damagePopup(this, this.boss.x, this.boss.y - 90, `-${BOSS.reflectDamage}`, COLORS.neon, 36);
+            this.spawnParryBurst();
+            this.hud.toast(STRINGS.quiz.parrySuccess, 'neon');
+          }
+        } else {
+          if (result.timedOut) {
+            this.run.stats.timeouts += 1;
+          } else {
+            this.run.stats.wrong += 1;
+          }
+          this.meme.registerWrong();
+          this.pendingReason = STRINGS.act2.deathReason;
+          const actual = this.player.takeDamage(BOSS.quizFailDamage, this.boss.x, true);
+          if (actual > 0) {
+            this.cameras.main.shake(160, 0.01);
+          }
+          this.hud.toast(STRINGS.quiz.parryFail, 'rust');
+        }
+      },
+      onClose: () => {
+        this.quizOverlay = null;
+        this.parryActive = false;
+        this.clearSpecialStage();
+        if (this.finished) {
+          return;
+        }
+        this.player.setControlEnabled(true);
+        this.touch?.setEnabled(true);
+        if (!this.boss.isStaggered(this.time.now)) {
+          this.boss.clearTint();
+        }
+        this.boss.setVelocity(0, 0);
+        const advancedPhase = this.pendingPhase;
+        this.pendingPhase = null;
+        this.nextSpecialAt =
+          this.time.now + (advancedPhase ? 1200 : BOSS.specialCooldownMs);
+        this.nextAttackAt = this.time.now + 1000;
+        if (this.pendingCardId) {
+          this.cards.acquire(this.pendingCardId);
+          this.pendingCardId = null;
+        }
+        if (advancedPhase) {
+          this.showPhaseBanner(advancedPhase);
+        }
+      },
+    });
+  }
+
+  private playSpecialSuccessFx(special: string | null): void {
+    if (special === 'road_sign_drag') {
+      const rope = this.add.graphics();
+      rope.setDepth(95);
+      rope.lineStyle(3, COLORS.warning, 0.9);
+      rope.lineBetween(this.boss.x + 42, this.boss.y - 86, 1180, 230);
+      rope.lineStyle(1, COLORS.paper, 0.7);
+      rope.lineBetween(this.boss.x + 42, this.boss.y - 82, 1180, 226);
+      audio.play('ropeTension');
+      const gear = this.add.image(this.boss.x + 18, this.boss.y - 50, TEX.gear);
+      gear.setDepth(96);
+      gear.setTint(COLORS.warning);
+      this.tweens.add({
+        targets: gear,
+        x: 1210,
+        y: 232,
+        angle: 520,
+        duration: 900,
+        ease: 'Cubic.easeIn',
+        onComplete: () => gear.destroy(),
+      });
+      const note = addHotTag(this, this.boss.x - 40, this.boss.y - 150, '自拍杆被缆绳挂住', COLORS.neon, 0.02);
+      note.setDepth(97);
+      this.tweens.add({ targets: note, alpha: 0, delay: 1200, duration: 340, onComplete: () => note.destroy() });
+      this.tweens.add({ targets: rope, alpha: 0, delay: 1000, duration: 300, onComplete: () => rope.destroy() });
+    } else if (special === 'canopy_rain') {
+      const tarp = this.add.container(this.boss.x, 160);
+      tarp.setDepth(95);
+      const g = this.add.graphics();
+      g.fillStyle(0x4b5642, 0.92);
+      g.fillPoints(
+        [
+          new Phaser.Geom.Point(-180, -20),
+          new Phaser.Geom.Point(150, -42),
+          new Phaser.Geom.Point(196, 16),
+          new Phaser.Geom.Point(120, 4),
+          new Phaser.Geom.Point(58, 48),
+          new Phaser.Geom.Point(4, 8),
+          new Phaser.Geom.Point(-62, 30),
+          new Phaser.Geom.Point(-130, -2),
+        ],
+        true,
+      );
+      g.lineStyle(2, COLORS.paper, 0.3);
+      g.strokePoints(
+        [
+          new Phaser.Geom.Point(-180, -20),
+          new Phaser.Geom.Point(150, -42),
+          new Phaser.Geom.Point(196, 16),
+          new Phaser.Geom.Point(120, 4),
+          new Phaser.Geom.Point(58, 48),
+          new Phaser.Geom.Point(4, 8),
+          new Phaser.Geom.Point(-62, 30),
+          new Phaser.Geom.Point(-130, -2),
+        ],
+        true,
+      );
+      tarp.add(g);
+      const label = this.add.text(0, -52, '雨棚兜住了荒哥', {
+        fontFamily: FONTS.mono,
+        fontSize: '12px',
+        color: CSS.paper,
+        fontStyle: 'bold',
+        backgroundColor: CSS.rust,
+        padding: { x: 8, y: 3 },
+      });
+      label.setOrigin(0.5);
+      tarp.add(label);
+      audio.play('netDrop');
+      audio.play('stampThud');
+      this.tweens.add({
+        targets: tarp,
+        y: this.boss.y - 60,
+        angle: 4,
+        duration: 520,
+        ease: 'Cubic.easeIn',
+        onComplete: () => {
+          pixelBurst(this, this.boss.x, this.boss.y - 40, COLORS.neon, 12, 1.3);
+          this.cameras.main.shake(200, 0.01);
+          this.tweens.add({ targets: tarp, alpha: 0, delay: 1500, duration: 500, onComplete: () => tarp.destroy(true) });
+        },
+      });
+    }
+  }
+
+  private spawnParryBurst(): void {
+    for (let i = 0; i < 3; i += 1) {
+      pixelBurst(
+        this,
+        this.boss.x + Phaser.Math.Between(-60, 60),
+        this.boss.y + Phaser.Math.Between(-80, 60),
+        i % 2 === 0 ? COLORS.neon : COLORS.warning,
+        12,
+        1.4,
+      );
+    }
+    const mark = stamp(this, this.boss.x, this.boss.y - 160, '接住了', {
+      color: COLORS.neon,
+      fontSize: 24,
+      angle: -0.08,
+      alpha: 0.9,
+    });
+    mark.setDepth(98);
+    this.tweens.add({ targets: mark, alpha: 0, y: mark.y - 30, delay: 900, duration: 300, onComplete: () => mark.destroy(true) });
+  }
+
+  private clearSpecialStage(): void {
+    this.specialEpoch += 1;
+    this.specialDim?.destroy();
+    this.specialDim = null;
+    this.specialProps?.destroy(true);
+    this.specialProps = null;
   }
 
   private handleBossDefeated(): void {
@@ -1172,11 +1714,66 @@ export class WastelandBossScene extends Phaser.Scene {
     this.touch?.setEnabled(false);
     this.clearBossProjectiles();
     this.cleanupViewfinderAttack();
+    if (this.pendingCardId) {
+      this.cards.acquire(this.pendingCardId);
+      this.pendingCardId = null;
+    }
+    if (this.parryActive) {
+      this.quizOverlay?.cancel();
+      this.parryActive = false;
+    }
+    this.clearSpecialStage();
+    this.boss.clearTint();
     audio.play('victory');
     this.cameras.main.shake(360, 0.018);
     this.cameras.main.flash(220, 255, 247, 228, false);
     this.hud.toast(STRINGS.act2.bossDefeated, 'neon');
-    const finalWord = this.add.text(this.boss.x, this.boss.y - 150, this.boss.config.defeatLine, {
+    this.hud.updateBoss(
+      this.boss.config.name,
+      this.boss.config.title,
+      0,
+      this.boss.getMaxHp(),
+      this.boss.getPhaseNumber(),
+      this.boss.getMaxPhases(),
+    );
+
+    const hand = this.add.container(1080, 258);
+    hand.setDepth(98);
+    const handG = this.add.graphics();
+    handG.lineStyle(10, COLORS.coal, 0.9);
+    handG.lineBetween(0, -118, 0, -18);
+    handG.fillStyle(COLORS.paper, 0.95);
+    handG.fillRect(-34, -26, 68, 52);
+    handG.fillStyle(COLORS.paperDim, 1);
+    for (let i = 0; i < 3; i += 1) {
+      handG.fillRect(-26 + i * 18, -42, 13, 24);
+    }
+    handG.fillStyle(COLORS.rust, 0.7);
+    handG.fillRect(-34, 20, 68, 6);
+    hand.add(handG);
+    hand.setAlpha(0);
+    this.tweens.add({ targets: hand, alpha: 1, y: 338, duration: 520, ease: 'Cubic.easeOut' });
+
+    const sign = this.add.container(this.boss.x, this.boss.y - 74);
+    sign.setDepth(150);
+    const signG = this.add.graphics();
+    signG.fillStyle(COLORS.paper, 0.98);
+    signG.fillRect(-118, -48, 236, 96);
+    signG.lineStyle(3, COLORS.coal, 0.9);
+    signG.strokeRect(-118, -48, 236, 96);
+    signG.fillStyle(COLORS.rust, 0.9);
+    signG.fillRect(-118, -48, 236, 8);
+    sign.add(signG);
+    const signText = this.add.text(0, 2, '这是好事呀', {
+      fontFamily: FONTS.display,
+      fontSize: '24px',
+      color: CSS.coal,
+      fontStyle: 'bold',
+    });
+    signText.setOrigin(0.5);
+    sign.add(signText);
+
+    const finalWord = this.add.text(this.boss.x, this.boss.y - 158, this.boss.config.defeatLine, {
       fontFamily: FONTS.body,
       fontSize: '16px',
       color: CSS.paper,
@@ -1188,24 +1785,34 @@ export class WastelandBossScene extends Phaser.Scene {
     });
     finalWord.setOrigin(0.5);
     finalWord.setDepth(150);
-    const winStamp = stamp(this, GAME_WIDTH / 2, 280, STRINGS.act2.bossDefeated, {
-      color: COLORS.rust,
-      fontSize: 42,
-      angle: -0.07,
-      alpha: 0.9,
+    finalWord.setAlpha(0);
+    this.tweens.add({ targets: finalWord, alpha: 1, y: finalWord.y - 20, delay: 500, duration: 400 });
+
+    this.time.delayedCall(720, () => {
+      this.tweens.add({
+        targets: sign,
+        scaleX: 0,
+        duration: 130,
+        ease: 'Cubic.easeIn',
+        onComplete: () => {
+          signText.setText(STRINGS.act2.bossDefeated);
+          signText.setFontSize(19);
+          audio.play('stampThud');
+          this.cameras.main.flash(120, 255, 247, 228, false);
+          this.tweens.add({ targets: sign, scaleX: 1, duration: 150, ease: 'Cubic.easeOut' });
+        },
+      });
     });
-    winStamp.setScrollFactor(0);
-    winStamp.setDepth(445);
-    this.tweens.add({ targets: winStamp, scale: { from: 2.2, to: 1 }, duration: 260, ease: 'Back.easeOut' });
     this.tweens.add({
       targets: this.boss,
-      angle: -82,
-      y: this.boss.y + 70,
-      alpha: 0.55,
-      duration: BOSS.deathDelayMs,
-      ease: 'Cubic.easeIn',
+      angle: 14,
+      y: this.boss.y + 16,
+      alpha: 0.82,
+      duration: 1500,
+      delay: 700,
+      ease: 'Sine.easeInOut',
     });
-    this.time.delayedCall(BOSS.deathDelayMs + 420, () => this.finishRun(true, false));
+    this.time.delayedCall(2750, () => this.finishRun(true));
   }
 
   private handleDeath(): void {
@@ -1221,6 +1828,11 @@ export class WastelandBossScene extends Phaser.Scene {
     this.touch?.setEnabled(false);
     this.clearBossProjectiles();
     this.cleanupViewfinderAttack();
+    if (this.parryActive) {
+      this.quizOverlay?.cancel();
+      this.parryActive = false;
+    }
+    this.clearSpecialStage();
     audio.play('defeat');
     this.cameras.main.shake(260, 0.016);
     this.cameras.main.flash(180, 168, 58, 34, false);
@@ -1232,10 +1844,10 @@ export class WastelandBossScene extends Phaser.Scene {
     });
     marker.setDepth(150);
     this.tweens.add({ targets: marker, alpha: 0, y: marker.y - 30, delay: 900, duration: 400 });
-    this.time.delayedCall(1500, () => this.finishRun(false, false));
+    this.time.delayedCall(1500, () => this.finishRun(false));
   }
 
-  private finishRun(victory: boolean, temporary: boolean): void {
+  private finishRun(victory: boolean): void {
     if (this.transitioning) {
       return;
     }
@@ -1243,6 +1855,7 @@ export class WastelandBossScene extends Phaser.Scene {
     this.attackEpoch += 1;
     this.cleanupViewfinderAttack();
     this.clearBossProjectiles();
+    this.clearSpecialStage();
     this.run.hp = Math.max(0, this.player.getHp());
     this.meme.sync(this.run);
     this.run.cards = [...this.run.cards];
@@ -1252,19 +1865,12 @@ export class WastelandBossScene extends Phaser.Scene {
       timeMs: elapsedMs(this.run),
       stats: { ...this.run.stats },
       cards: [...this.run.cards],
-      reason: temporary
-        ? STRINGS.act2.bossTempReason
-        : victory
-          ? STRINGS.act2.bossDefeatedSub
-          : this.pendingReason,
+      reason: victory ? STRINGS.act2.bossDefeatedSub : this.pendingReason,
     };
-    if (temporary) {
-      payload.temporary = true;
-    }
     audio.setMusic('result');
     this.cameras.main.fadeOut(300, 23, 19, 16);
     this.time.delayedCall(320, () => {
-      this.scene.start('Result', { payload, record: !temporary });
+      this.scene.start('Result', { payload, record: true });
     });
   }
 
@@ -1279,7 +1885,9 @@ export class WastelandBossScene extends Phaser.Scene {
       this.events.off('cards-changed', this.cardsChangedHandler);
       this.cardsChangedHandler = null;
     }
+    this.quizOverlay = null;
     this.cleanupViewfinderAttack();
+    this.clearSpecialStage();
     this.introWorld = null;
     this.introUi = null;
   }
