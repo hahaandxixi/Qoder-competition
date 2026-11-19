@@ -24,6 +24,7 @@ export class Hud {
   private memeValue!: Phaser.GameObjects.Text;
   private memeTitle!: Phaser.GameObjects.Text;
   private streakText!: Phaser.GameObjects.Text;
+  private memePanelY = 24;
   private readonly cardsLayer: Phaser.GameObjects.Container;
   private readonly cardsTitle: Phaser.GameObjects.Text;
   private readonly hintRoot: Phaser.GameObjects.Container;
@@ -157,6 +158,7 @@ export class Hud {
 
   private buildMemePanel(bossMode: boolean): void {
     const y = bossMode ? 104 : 24;
+    this.memePanelY = y;
     const x = GAME_WIDTH / 2 - 220;
     const g = this.scene.add.graphics();
     g.fillStyle(COLORS.coal, 0.8);
@@ -260,7 +262,7 @@ export class Hud {
   updateMeme(value: number, burstActive: boolean, streak: number): void {
     const ratio = Phaser.Math.Clamp(value / 100, 0, 1);
     this.memeBar.clear();
-    drawSegmentBar(this.memeBar, GAME_WIDTH / 2 - 210, 52, 420, 13, ratio, burstActive ? COLORS.neon : COLORS.rust, 28);
+    drawSegmentBar(this.memeBar, GAME_WIDTH / 2 - 210, this.memePanelY + 28, 420, 13, ratio, burstActive ? COLORS.neon : COLORS.rust, 28);
     this.memeValue.setText(`${Math.round(value)}%`);
     this.memeValue.setColor(burstActive ? CSS.neon : CSS.warning);
     if (burstActive) {

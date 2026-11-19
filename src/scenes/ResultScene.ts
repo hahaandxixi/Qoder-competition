@@ -12,6 +12,7 @@ interface ResultSceneData {
   payload?: ResultPayload;
   record?: boolean;
   fromCredits?: boolean;
+  showStats?: boolean;
 }
 
 const FALLBACK_PAYLOAD: ResultPayload = {
@@ -43,6 +44,7 @@ export class ResultScene extends Phaser.Scene {
   };
   private isNewBest = false;
   private finalEnding = false;
+  private forceStats = false;
   private cleanups: Array<() => void> = [];
 
   constructor() {
@@ -58,6 +60,7 @@ export class ResultScene extends Phaser.Scene {
     }
     this.isNewBest = false;
     this.finalEnding = false;
+    this.forceStats = data.showStats === true;
   }
 
   create(): void {
@@ -75,6 +78,7 @@ export class ResultScene extends Phaser.Scene {
     }
 
     this.finalEnding =
+      !this.forceStats &&
       this.payload.victory &&
       this.payload.act === 2 &&
       this.payload.temporary !== true &&
@@ -595,7 +599,16 @@ export class ResultScene extends Phaser.Scene {
     });
 
     this.time.delayedCall(3200, () => {
-      const menu = paperButton(this, GAME_WIDTH / 2, 592, 260, 56, STRINGS.result.finalMenu, () => this.toMenu(), {
+      const stats = paperButton(this, 492, 592, 300, 56, STRINGS.result.finalStats, () => this.showFinalStats(), {
+        fill: COLORS.rust,
+        textColor: CSS.paper,
+        accent: COLORS.warning,
+        fontSize: 18,
+      });
+      stats.root.setDepth(7);
+      stats.root.setAlpha(0);
+      this.tweens.add({ targets: stats.root, alpha: 1, duration: 260 });
+      const menu = paperButton(this, 800, 592, 240, 56, STRINGS.result.finalMenu, () => this.toMenu(), {
         fill: COLORS.coal,
         textColor: CSS.paper,
         accent: COLORS.warning,
@@ -608,12 +621,20 @@ export class ResultScene extends Phaser.Scene {
     });
   }
 
+  private showFinalStats(): void {
+    audio.play('select');
+    this.cameras.main.fadeOut(180, 23, 19, 16);
+    this.time.delayedCall(200, () => {
+      this.scene.restart({ payload: this.payload, record: false, showStats: true });
+    });
+  }
+
   private bindFinalKeyboard(): void {
     const keyboard = this.input.keyboard;
     if (!keyboard) {
       return;
     }
-    const onEnter = () => this.toMenu();
+    const onEnter = () => this.showFinalStats();
     const onEsc = () => this.toMenu();
     keyboard.on('keydown-ENTER', onEnter);
     keyboard.on('keydown-ESC', onEsc);

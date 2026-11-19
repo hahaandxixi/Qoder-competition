@@ -33,6 +33,8 @@ export class QuizOverlay {
   private secondsText!: Phaser.GameObjects.Text;
   private readonly optionViews: OptionView[] = [];
   private readonly keyboardCleanup: Array<() => void> = [];
+  private timerBarY = 112;
+  private slipLayout = false;
   private elapsedMs = 0;
   private resolved = false;
   private closed = false;
@@ -114,9 +116,10 @@ export class QuizOverlay {
     live.setOrigin(1, 0);
     this.root.add(live);
 
-    const promptBg = this.scene.add.graphics();
     const slip = this.config.prepared.question.slip;
-    const promptWidth = slip ? 860 : 1150;
+    this.slipLayout = Boolean(slip);
+    const promptWidth = this.slipLayout ? 1040 : 1150;
+    const promptBg = this.scene.add.graphics();
     promptBg.fillStyle(COLORS.paper, 0.96);
     promptBg.fillRect(-promptWidth / 2, -25, promptWidth, 50);
     promptBg.lineStyle(2, COLORS.warning, 0.8);
@@ -132,30 +135,26 @@ export class QuizOverlay {
       wordWrap: { width: promptWidth - 60 },
     });
     promptText.setOrigin(0.5);
-    const prompt = this.scene.add.container(GAME_WIDTH / 2 - (slip ? 130 : 0), 78, [promptBg, promptText]);
+    const prompt = this.scene.add.container(GAME_WIDTH / 2, this.slipLayout ? 66 : 78, [promptBg, promptText]);
     prompt.setRotation(-0.002);
     this.root.add(prompt);
 
     if (slip) {
-      const flashback = this.makeSlipPanel(GAME_WIDTH - 152, 96, 208, 116, slip, {
-        border: COLORS.warning,
-        dense: true,
-      });
-      flashback.setRotation(0.045);
-      this.root.add(flashback);
+      this.root.add(this.makeParrySlipBand(slip));
     }
 
-    const timerLabel = this.scene.add.text(32, 107, STRINGS.quiz.timerLabel, {
+    const timerLabel = this.scene.add.text(32, this.slipLayout ? 162 : 107, STRINGS.quiz.timerLabel, {
       fontFamily: FONTS.mono,
       fontSize: '12px',
       color: CSS.paperDim,
     });
     this.root.add(timerLabel);
+    this.timerBarY = this.slipLayout ? 176 : 112;
     this.timerBar = this.scene.add.graphics();
     this.root.add(this.timerBar);
-    this.secondsText = this.scene.add.text(GAME_WIDTH - 32, 104, '', {
+    this.secondsText = this.scene.add.text(GAME_WIDTH - 32, this.slipLayout ? 164 : 104, '', {
       fontFamily: FONTS.mono,
-      fontSize: '17px',
+      fontSize: this.slipLayout ? '20px' : '17px',
       color: CSS.warning,
       fontStyle: 'bold',
     });
@@ -163,22 +162,64 @@ export class QuizOverlay {
     this.root.add(this.secondsText);
 
     const avatars = [TEX.avatarA, TEX.avatarB, TEX.avatarC];
+    const optionStartY = this.slipLayout ? 218 : 158;
+    const optionStepY = this.slipLayout ? 58 : 66;
     this.config.prepared.options.forEach((option, index) => {
-      const y = 158 + index * 66;
+      const y = optionStartY + index * optionStepY;
       const view = this.createParryOption(option, index, y, avatars[index % avatars.length] ?? TEX.avatarA);
       this.optionViews.push(view);
       this.root.add(view.container);
     });
 
-    const hint = this.scene.add.text(GAME_WIDTH / 2, 331, STRINGS.quiz.keyHint, {
-      fontFamily: FONTS.mono,
-      fontSize: '11px',
-      color: CSS.paperDim,
-    });
-    hint.setOrigin(0.5, 0);
-    this.root.add(hint);
+    if (!this.slipLayout) {
+      const hint = this.scene.add.text(GAME_WIDTH / 2, 331, STRINGS.quiz.keyHint, {
+        fontFamily: FONTS.mono,
+        fontSize: '11px',
+        color: CSS.paperDim,
+      });
+      hint.setOrigin(0.5, 0);
+      this.root.add(hint);
+    }
 
     return { timerBar: this.timerBar, secondsText: this.secondsText };
+  }
+
+  /** 弹反派的小票横条：不压计时条，字号按选项级别放大，手机横屏也能读清代签人。 */
+  private makeParrySlipBand(slip: QuestionSlip): Phaser.GameObjects.Container {
+    const w = 920;
+    const h = 58;
+    const root = this.scene.add.container(GAME_WIDTH / 2, 124);
+    const bg = this.scene.add.graphics();
+    bg.fillStyle(COLORS.coal, 0.35);
+    bg.fillRect(-w / 2 + 5, -h / 2 + 6, w, h);
+    bg.fillStyle(COLORS.paper, 0.98);
+    bg.fillRect(-w / 2, -h / 2, w, h);
+    bg.lineStyle(2, COLORS.warning, 0.85);
+    bg.strokeRect(-w / 2, -h / 2, w, h);
+    bg.fillStyle(COLORS.warning, 1);
+    bg.fillRect(-w / 2, -h / 2, 7, h);
+    bg.fillStyle(COLORS.paper, 0.98);
+    for (let i = 0; i < w; i += 14) {
+      bg.fillTriangle(-w / 2 + i, h / 2, -w / 2 + i + 14, h / 2, -w / 2 + i + 7, h / 2 + 5);
+    }
+    const title = this.scene.add.text(-w / 2 + 18, 0, slip.title, {
+      fontFamily: FONTS.mono,
+      fontSize: '12px',
+      color: CSS.rust,
+      fontStyle: 'bold',
+    });
+    title.setOrigin(0, 0.5);
+    const fields = this.scene.add.text(30, 0, slip.lines.join('　　'), {
+      fontFamily: FONTS.body,
+      fontSize: '21px',
+      color: CSS.coal,
+      fontStyle: 'bold',
+      align: 'center',
+    });
+    fields.setOrigin(0.5);
+    root.add([bg, title, fields]);
+    root.setRotation(-0.002);
+    return root;
   }
 
   private createParryOption(
@@ -619,7 +660,7 @@ export class QuizOverlay {
     const mark = stamp(
       this.scene,
       this.config.mode === 'parry' ? GAME_WIDTH / 2 + 170 : GAME_WIDTH / 2 + 280,
-      this.config.mode === 'parry' ? 356 : 554,
+      this.config.mode === 'parry' ? (this.slipLayout ? 376 : 356) : 554,
       stampText,
       {
         color: correct ? COLORS.neon : COLORS.rust,
@@ -634,7 +675,7 @@ export class QuizOverlay {
 
     const resultText = this.scene.add.text(
       GAME_WIDTH / 2 - 160,
-      this.config.mode === 'parry' ? 370 : 554,
+      this.config.mode === 'parry' ? (this.slipLayout ? 380 : 370) : 554,
       `${STRINGS.quiz.answerWas}：${this.config.prepared.question.answer}`,
       {
         fontFamily: FONTS.body,
@@ -681,7 +722,7 @@ export class QuizOverlay {
     const ratio = this.config.windowMs > 0 ? Math.max(0, Math.min(1, remainingMs / this.config.windowMs)) : 0;
     const isParry = this.config.mode === 'parry';
     const x = isParry ? 32 : GAME_WIDTH / 2 - 390;
-    const y = isParry ? 112 : 597;
+    const y = isParry ? this.timerBarY : 597;
     const width = isParry ? GAME_WIDTH - 156 : 780;
     this.timerBar.clear();
     this.timerBar.fillStyle(COLORS.coal, 0.9);

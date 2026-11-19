@@ -170,6 +170,7 @@ export class WastelandBossScene extends Phaser.Scene {
     }
     if (!this.finished) {
       this.player.tick(time, delta);
+      this.quizOverlay?.update(delta);
       this.boss.tick(time);
       this.tickAlly(time);
       this.cleanupProjectiles(time);
