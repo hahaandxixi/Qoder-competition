@@ -131,6 +131,100 @@ export function paperPanel(
   return root;
 }
 
+export interface HalfReceiptOptions {
+  label?: string;
+  width?: number;
+  height?: number;
+  angle?: number;
+  alpha?: number;
+  scale?: number;
+}
+
+/** 被雨泡皱、撕掉一半的面单：保留原字与洇开的条码。 */
+export function halfReceipt(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  options: HalfReceiptOptions = {},
+): Phaser.GameObjects.Container {
+  const width = options.width ?? 260;
+  const height = options.height ?? 108;
+  const left = -width / 2;
+  const top = -height / 2;
+  const root = scene.add.container(x, y);
+
+  const edge = [
+    [left, top],
+    [left + width * 0.62, top],
+    [left + width * 0.68, top + height * 0.08],
+    [left + width * 0.64, top + height * 0.2],
+    [left + width * 0.7, top + height * 0.32],
+    [left + width * 0.66, top + height * 0.44],
+    [left + width * 0.72, top + height * 0.58],
+    [left + width * 0.68, top + height * 0.72],
+    [left + width * 0.71, top + height * 0.86],
+    [left + width * 0.67, top + height],
+    [left, top + height],
+  ] as const;
+  const points = edge.map(([px, py]) => new Phaser.Geom.Point(px, py));
+
+  const shadow = scene.add.graphics();
+  shadow.fillStyle(COLORS.coal, 0.32);
+  shadow.fillPoints(points.map((p) => new Phaser.Geom.Point(p.x + 7, p.y + 8)), true);
+  root.add(shadow);
+
+  const g = scene.add.graphics();
+  g.fillStyle(COLORS.paper, 0.98);
+  g.fillPoints(points, true);
+  g.lineStyle(2, COLORS.rust, 0.8);
+  g.strokePoints(points, true);
+  g.fillStyle(COLORS.rust, 0.82);
+  g.fillRect(left + 1, top + 1, width * 0.56, Math.max(4, height * 0.06));
+  g.fillStyle(COLORS.paperDark, 0.3);
+  g.fillCircle(left + width * 0.22, top + height * 0.52, height * 0.11);
+  g.fillCircle(left + width * 0.43, top + height * 0.68, height * 0.07);
+  g.fillStyle(COLORS.rust, 0.12);
+  g.fillCircle(left + width * 0.34, top + height * 0.38, height * 0.09);
+  g.lineStyle(1, COLORS.paperDark, 0.7);
+  g.lineBetween(left + 16, top + height * 0.3, left + width * 0.48, top + height * 0.3);
+  g.lineBetween(left + 16, top + height * 0.4, left + width * 0.4, top + height * 0.4);
+  g.fillStyle(COLORS.coal, 0.55);
+  let cursor = left + 18;
+  for (let i = 0; i < 17 && cursor < left + width * 0.45; i += 1) {
+    const bar = 2 + (i % 3);
+    g.fillRect(cursor, top + height * 0.78, bar, height * 0.12);
+    cursor += bar + 4;
+  }
+  g.fillStyle(COLORS.paper, 0.76);
+  g.fillRect(left + width * 0.27, top + height * 0.76, width * 0.19, height * 0.13);
+  g.fillStyle(COLORS.rust, 0.3);
+  g.fillRect(left + width * 0.33, top + height * 0.79, width * 0.1, 2);
+  root.add(g);
+
+  const label = scene.add.text(left + width * 0.28, top + height * 0.5, options.label ?? '荒野岛', {
+    fontFamily: FONTS.display,
+    fontSize: `${Math.round(height * 0.24)}px`,
+    color: CSS.coal,
+    fontStyle: 'bold',
+  });
+  label.setOrigin(0.5);
+  const small = scene.add.text(left + width * 0.28, top + height * 0.66, '404 // 泡水件', {
+    fontFamily: FONTS.mono,
+    fontSize: `${Math.max(7, Math.round(height * 0.075))}px`,
+    color: CSS.rust,
+    fontStyle: 'bold',
+  });
+  small.setOrigin(0.5);
+  small.setAlpha(0.75);
+  root.add([label, small]);
+  root.setAngle(options.angle ?? -0.06);
+  root.setAlpha(options.alpha ?? 0.96);
+  if (options.scale !== undefined) {
+    root.setScale(options.scale);
+  }
+  return root;
+}
+
 export function makeTape(
   scene: Phaser.Scene,
   x: number,

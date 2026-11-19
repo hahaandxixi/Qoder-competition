@@ -18,6 +18,7 @@ import {
   addScanlines,
   damagePopup,
   glitchText,
+  halfReceipt,
   makeTape,
   pixelBurst,
   stamp,
@@ -503,8 +504,8 @@ export class BossScene extends Phaser.Scene {
     this.player.setControlEnabled(false);
     this.touch?.setEnabled(false);
     this.hud.setVisible(false);
-    this.cameras.main.zoomTo(1.3, 520, 'Sine.easeInOut');
-    this.cameras.main.pan(BOSS_HOVER_X, 425, 620, 'Sine.easeInOut');
+    this.cameras.main.zoomTo(1.16, 520, 'Sine.easeInOut');
+    this.cameras.main.pan(620, 400, 620, 'Sine.easeInOut');
     audio.play('door');
 
     const world = this.add.container(0, 0);
@@ -598,22 +599,36 @@ export class BossScene extends Phaser.Scene {
     bubble.add([bubbleBg, bubbleText, bubbleSmall]);
     world.add(bubble);
 
+    const scanner = this.add.container(this.player.x - 26, this.player.y + 5);
+    const scannerG = this.add.graphics();
+    scannerG.fillStyle(COLORS.coal, 0.95);
+    scannerG.fillRect(-8, -5, 16, 10);
+    scannerG.fillStyle(COLORS.warning, 0.9);
+    scannerG.fillRect(-5, -3, 6, 3);
+    scannerG.fillStyle(COLORS.neon, 1);
+    scannerG.fillRect(5, -3, 3, 6);
+    scannerG.lineStyle(1, COLORS.paperDim, 0.7);
+    scannerG.strokeRect(-8, -5, 16, 10);
+    scanner.add(scannerG);
+    scanner.setDepth(61);
+    world.add(scanner);
+
     const pointer = this.add.graphics();
     pointer.lineStyle(5, COLORS.warning, 0.85);
-    pointer.lineBetween(BOSS_HOVER_X - 180, 452, 520, 486);
+    pointer.lineBetween(BOSS_HOVER_X - 180, 452, scanner.x + 10, scanner.y - 4);
     pointer.fillStyle(COLORS.warning, 0.9);
-    pointer.fillTriangle(520, 486, 552, 468, 542, 506);
+    pointer.fillTriangle(scanner.x + 10, scanner.y - 4, scanner.x + 34, scanner.y - 18, scanner.x + 28, scanner.y + 2);
     pointer.setAlpha(0);
     world.add(pointer);
 
-    const flash = this.add.circle(BOSS_HOVER_X - 180, 452, 12, COLORS.warning, 0.8);
+    const flash = this.add.circle(scanner.x + 7, scanner.y - 2, 12, COLORS.warning, 0.8);
     flash.setAlpha(0);
     world.add(flash);
 
     const introUi = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2);
     introUi.setDepth(445);
     introUi.setScrollFactor(0);
-    introUi.setScale(1 / 1.3);
+    introUi.setScale(1 / 1.15);
     this.introUi = introUi;
     const halfW = GAME_WIDTH / 2;
     const halfH = GAME_HEIGHT / 2;
@@ -761,6 +776,17 @@ export class BossScene extends Phaser.Scene {
         return;
       }
       audio.play('scan');
+      const beam = this.add.graphics();
+      beam.setDepth(60);
+      beam.lineStyle(2, COLORS.neon, 0.85);
+      beam.lineBetween(scanner.x + 8, scanner.y, this.boss.x, this.boss.y);
+      beam.setAlpha(0);
+      world.add(beam);
+      this.tweens.add({ targets: beam, alpha: 0.9, duration: 100, yoyo: true, hold: 180, onComplete: () => beam.destroy() });
+      const targetFlash = this.add.circle(this.boss.x, this.boss.y, 16, COLORS.neon, 0.35);
+      targetFlash.setDepth(60);
+      world.add(targetFlash);
+      this.tweens.add({ targets: targetFlash, scale: 2.4, alpha: 0, duration: 340, onComplete: () => targetFlash.destroy() });
       caption.setText(STRINGS.boss.cinematic.scan);
       caption.setColor(CSS.neon);
       this.tweens.add({ targets: projection, alpha: 1, y: 138, duration: 220, ease: 'Back.easeOut' });
@@ -1485,8 +1511,24 @@ export class BossScene extends Phaser.Scene {
       });
     });
 
+    // 先让“又是类魂”的笑点落下：奶娃满意地点一下头。
+    this.time.delayedCall(3150, () => {
+      if (epoch !== this.specialEpoch) {
+        return;
+      }
+      audio.play('select');
+      this.tweens.add({
+        targets: this.boss,
+        y: BOSS_HOVER_Y + 12,
+        duration: 120,
+        yoyo: true,
+        repeat: 1,
+        ease: 'Sine.easeInOut',
+      });
+    });
+
     // 第二拍·作出判断：章口转向阿浣，萝卜身上的「类魂」标签保留可读。
-    this.time.delayedCall(3260, () => {
+    this.time.delayedCall(3360, () => {
       if (epoch !== this.specialEpoch) {
         return;
       }
@@ -1559,7 +1601,7 @@ export class BossScene extends Phaser.Scene {
     for (let x = -146; x < 140; x += 12) {
       rg.fillRect(x, 80, 4, 10);
     }
-    const receiptHeader = this.add.text(0, -100, '代 签 单 · 回 收', {
+    const receiptHeader = this.add.text(0, -100, '代 签 单 · 原 件', {
       fontFamily: FONTS.display,
       fontSize: '20px',
       color: CSS.coal,
@@ -1567,9 +1609,9 @@ export class BossScene extends Phaser.Scene {
     });
     receiptHeader.setOrigin(0.5);
     const lines = [
-      '收件人　甄领先',
-      '代签人　甄建国',
-      '与收件人关系　父',
+      '收件人：甄领先',
+      '代签人：灭建国',
+      '与收件人关系：父',
     ];
     const lineTexts = lines.map((line, i) => {
       const txt = this.add.text(-146, -56 + i * 38, line, {
@@ -1624,21 +1666,87 @@ export class BossScene extends Phaser.Scene {
   }
 
   private playSigningCounterFx(): void {
-    audio.play('scan');
     const receipt = this.specialReceipt;
     const stamps = this.specialStamps;
-    if (receipt && receipt.active) {
-      this.tweens.add({ targets: receipt, scaleX: 1.18, scaleY: 1.06, duration: 170, yoyo: true });
+    if (receipt?.active) {
+      this.tweens.add({ targets: receipt, scaleX: 1.12, scaleY: 1.04, duration: 170, yoyo: true });
     }
-    this.spawnTailWhip(this.boss.x - 10, this.boss.y + 20);
+
+    const flung = this.add.container(this.player.x + 26, this.player.y - 28);
+    const fg = this.add.graphics();
+    fg.fillStyle(COLORS.coal, 0.25);
+    fg.fillRect(-92, -54, 188, 112);
+    fg.fillStyle(COLORS.paper, 1);
+    fg.fillRect(-98, -60, 188, 112);
+    fg.lineStyle(2, COLORS.rust, 0.8);
+    fg.strokeRect(-98, -60, 188, 112);
+    fg.fillStyle(COLORS.warning, 0.8);
+    fg.fillRect(-98, -60, 188, 8);
+    fg.fillStyle(COLORS.coal, 0.28);
+    fg.fillRect(-78, -30, 146, 2);
+    fg.fillRect(-78, -14, 120, 2);
+    fg.fillRect(-78, 2, 138, 2);
+    const flungTitle = this.add.text(0, -44, '代 签 单', {
+      fontFamily: FONTS.display,
+      fontSize: '15px',
+      color: CSS.coal,
+      fontStyle: 'bold',
+    });
+    flungTitle.setOrigin(0.5);
+    const flungLine = this.add.text(0, 24, '代签人：灭建国', {
+      fontFamily: FONTS.body,
+      fontSize: '14px',
+      color: CSS.coal,
+      fontStyle: 'bold',
+    });
+    flungLine.setOrigin(0.5);
+    flung.add([fg, flungTitle, flungLine]);
+    flung.setDepth(143);
+    flung.setScale(0.32);
+    flung.setAngle(-12);
+    flung.setAlpha(0.15);
+    audio.play('paper');
+    this.tweens.add({
+      targets: flung,
+      x: 700,
+      y: 500,
+      scale: 0.9,
+      angle: 3,
+      alpha: 1,
+      duration: 260,
+      ease: 'Cubic.easeOut',
+      onComplete: () => {
+        if (!flung.active) {
+          return;
+        }
+        audio.play('scan');
+        const verified = stamp(this, 700, 500, STRINGS.boss.cinematic.signingVerified, {
+          color: COLORS.neon,
+          fontSize: 16,
+          angle: -0.08,
+          alpha: 0.96,
+        });
+        verified.setDepth(145);
+        verified.setScale(1.6);
+        this.tweens.add({ targets: verified, scale: 1, duration: 160, ease: 'Back.easeOut' });
+        this.tweens.add({ targets: flung, scaleX: 1.04, scaleY: 1.06, duration: 130, yoyo: true });
+        this.time.delayedCall(1200, () => {
+          this.tweens.add({ targets: [flung, verified], alpha: 0, duration: 320, onComplete: () => {
+            flung.destroy(true);
+            verified.destroy(true);
+          } });
+        });
+      },
+    });
+
     const first = stamps[0];
     const second = stamps[1];
     const third = stamps[2];
     if (first?.active) {
-      this.tweens.add({ targets: first, x: 600, y: 500, angle: -12, alpha: 0, duration: 260, ease: 'Cubic.easeIn', onComplete: () => first.destroy(true) });
+      this.tweens.add({ targets: first, x: 682, y: 484, angle: -12, alpha: 0.2, duration: 260, ease: 'Cubic.easeIn', onComplete: () => first.destroy(true) });
     }
     if (second?.active) {
-      this.tweens.add({ targets: second, x: 680, y: 500, angle: 10, alpha: 0, duration: 300, ease: 'Cubic.easeIn', onComplete: () => second.destroy(true) });
+      this.tweens.add({ targets: second, x: 724, y: 516, angle: 10, alpha: 0.2, duration: 300, ease: 'Cubic.easeIn', onComplete: () => second.destroy(true) });
     }
     if (third?.active) {
       this.tweens.add({
@@ -1650,25 +1758,78 @@ export class BossScene extends Phaser.Scene {
         duration: 360,
         ease: 'Cubic.easeIn',
         onComplete: () => {
+          if (this.finished) {
+            third.destroy(true);
+            return;
+          }
           audio.play('stampThud');
           this.cameras.main.shake(120, 0.008);
           pixelBurst(this, BOSS_HOVER_X, BOSS_HOVER_Y + 8, COLORS.warning, 9, 0.8);
           const bib = stamp(this, BOSS_HOVER_X, BOSS_HOVER_Y + 12, STRINGS.boss.cinematic.signingDone, {
             color: COLORS.rust,
             fontSize: 21,
-            angle: 0.08,
+            angle: 0.02,
             alpha: 0.96,
           });
           bib.setDepth(142);
           bib.setScale(1.7);
           this.tweens.add({ targets: bib, scale: 1, duration: 180, ease: 'Back.easeOut' });
           third.destroy(true);
+          this.time.delayedCall(420, () => this.playSigningRubbingFx());
           this.time.delayedCall(2600, () => {
             this.tweens.add({ targets: bib, alpha: 0, duration: 360, onComplete: () => bib.destroy(true) });
           });
         },
       });
     }
+  }
+
+  /** 机器严格执行流程，最后签收了自己的主持人：低头擦章，越擦越红。 */
+  private playSigningRubbingFx(): void {
+    if (this.finished || !this.boss.active) {
+      return;
+    }
+    audio.play('paper');
+    const cloth = this.add.container(BOSS_HOVER_X + 26, BOSS_HOVER_Y + 8);
+    const cg = this.add.graphics();
+    cg.fillStyle(COLORS.paperDim, 0.9);
+    cg.fillRect(-16, -12, 32, 24);
+    cg.lineStyle(2, COLORS.coal, 0.7);
+    cg.strokeRect(-16, -12, 32, 24);
+    cg.fillStyle(COLORS.rust, 0.55);
+    cg.fillRect(-12, 5, 24, 3);
+    cloth.add(cg);
+    cloth.setDepth(144);
+    cloth.setAlpha(0);
+    const smear = this.add.graphics();
+    smear.setDepth(143);
+    smear.lineStyle(4, COLORS.rust, 0.7);
+    smear.lineBetween(BOSS_HOVER_X - 30, BOSS_HOVER_Y + 6, BOSS_HOVER_X + 28, BOSS_HOVER_Y + 18);
+    smear.lineBetween(BOSS_HOVER_X - 22, BOSS_HOVER_Y + 18, BOSS_HOVER_X + 34, BOSS_HOVER_Y + 6);
+    smear.lineStyle(2, COLORS.blood, 0.6);
+    smear.lineBetween(BOSS_HOVER_X - 36, BOSS_HOVER_Y + 24, BOSS_HOVER_X + 42, BOSS_HOVER_Y + 24);
+    smear.setAlpha(0);
+    this.tweens.add({ targets: cloth, alpha: 1, x: BOSS_HOVER_X - 10, y: BOSS_HOVER_Y + 16, duration: 220, yoyo: true, repeat: 3, ease: 'Sine.easeInOut', onComplete: () => {
+      this.tweens.add({ targets: cloth, alpha: 0, duration: 240, onComplete: () => cloth.destroy(true) });
+    } });
+    this.tweens.add({ targets: smear, alpha: 0.86, duration: 700, ease: 'Sine.easeOut' });
+    this.tweens.add({
+      targets: this.boss,
+      angle: -5,
+      y: BOSS_HOVER_Y + 10,
+      duration: 280,
+      yoyo: true,
+      repeat: 1,
+      ease: 'Sine.easeInOut',
+      onComplete: () => {
+        if (!this.finished) {
+          this.boss.setAngle(0);
+          this.boss.setY(BOSS_HOVER_Y);
+        }
+        this.tweens.add({ targets: smear, alpha: 0, duration: 380, onComplete: () => smear.destroy() });
+      },
+    });
+    addFloatingLine(this, this.boss.x, this.boss.y + 58, STRINGS.boss.cinematic.signingRub, COLORS.rust, 14, 1100);
   }
 
   private spawnTailWhip(targetX: number, targetY: number): void {
@@ -2081,7 +2242,115 @@ export class BossScene extends Phaser.Scene {
       duration: BOSS.deathDelayMs,
       ease: 'Cubic.easeIn',
     });
-    this.time.delayedCall(BOSS.deathDelayMs + 420, () => this.finishRun(true));
+
+    const screenOff = this.add.graphics();
+    screenOff.fillStyle(COLORS.coal, 0.94);
+    screenOff.fillRect(0, 0, GAME_WIDTH, 250);
+    screenOff.setScrollFactor(0);
+    screenOff.setDepth(58);
+    screenOff.setAlpha(0);
+    this.time.delayedCall(320, () => {
+      this.hud.setVisible(false);
+      this.tweens.add({ targets: screenOff, alpha: 0.94, duration: 280, ease: 'Sine.easeOut' });
+      const lost = glitchText(this, GAME_WIDTH / 2, 112, 'SIGNAL LOST', {
+        fontFamily: FONTS.mono,
+        fontSize: '28px',
+        color: CSS.paperDim,
+        fontStyle: 'bold',
+      });
+      lost.setScrollFactor(0);
+      lost.setDepth(59);
+      lost.setAlpha(0);
+      this.tweens.add({ targets: lost, alpha: 0.86, duration: 220, yoyo: true, hold: 520, onComplete: () => lost.destroy() });
+      this.tweens.add({ targets: [finalWord, winStamp], alpha: 0, duration: 520, ease: 'Sine.easeOut' });
+    });
+
+    this.time.delayedCall(650, () => {
+      const giveHand = this.add.container(0, 0);
+      giveHand.setDepth(159);
+      const hg = this.add.graphics();
+      hg.lineStyle(16, COLORS.coal, 0.9);
+      hg.lineBetween(this.boss.x - 20, this.boss.y + 22, this.boss.x - 58, this.boss.y - 16);
+      hg.lineStyle(8, COLORS.coalSoft, 1);
+      hg.lineBetween(this.boss.x - 24, this.boss.y + 18, this.boss.x - 56, this.boss.y - 12);
+      hg.fillStyle(COLORS.paper, 0.98);
+      hg.fillRoundedRect(this.boss.x - 82, this.boss.y - 38, 34, 30, 7);
+      hg.fillStyle(COLORS.paperDim, 1);
+      hg.fillRoundedRect(this.boss.x - 82, this.boss.y - 16, 10, 18, 5);
+      hg.fillRoundedRect(this.boss.x - 68, this.boss.y - 14, 10, 18, 5);
+      hg.fillRoundedRect(this.boss.x - 55, this.boss.y - 16, 9, 16, 5);
+      hg.fillStyle(COLORS.rust, 0.7);
+      hg.fillRect(this.boss.x - 76, this.boss.y - 26, 20, 3);
+      giveHand.add(hg);
+      giveHand.setAlpha(0);
+      this.tweens.add({ targets: giveHand, alpha: 1, duration: 240, ease: 'Cubic.easeOut' });
+      this.tweens.add({ targets: giveHand, x: 18, y: -10, duration: 520, ease: 'Cubic.easeOut' });
+      this.time.delayedCall(900, () => {
+        if (giveHand.active) {
+          this.tweens.add({ targets: giveHand, alpha: 0, duration: 240, onComplete: () => giveHand.destroy(true) });
+        }
+      });
+
+      const paper = halfReceipt(this, this.boss.x - 26, this.boss.y - 18, {
+        width: 300,
+        height: 120,
+        label: STRINGS.boss.cinematic.halfReceipt,
+        angle: -0.08,
+      });
+      paper.setDepth(160);
+      paper.setScale(0.34);
+      paper.setAlpha(0);
+      this.tweens.add({
+        targets: paper,
+        alpha: 1,
+        scale: 1,
+        x: this.boss.x - 100,
+        y: this.boss.y - 54,
+        duration: 420,
+        ease: 'Back.easeOut',
+        onComplete: () => {
+          this.tweens.add({
+            targets: paper,
+            x: this.player.x + 82,
+            y: this.player.y - 18,
+            angle: -0.13,
+            duration: 650,
+            ease: 'Cubic.easeInOut',
+            onComplete: () => {
+              const scannerX = this.player.x + 16;
+              const scannerY = this.player.y + 4;
+              const scanner = this.add.graphics();
+              scanner.fillStyle(COLORS.coal, 0.95);
+              scanner.fillRect(scannerX - 8, scannerY - 5, 16, 10);
+              scanner.fillStyle(COLORS.neon, 1);
+              scanner.fillRect(scannerX + 4, scannerY - 3, 3, 6);
+              scanner.setDepth(161);
+              const beam = this.add.graphics();
+              beam.setDepth(161);
+              beam.lineStyle(2, COLORS.neon, 0.65);
+              beam.lineBetween(scannerX + 7, scannerY, paper.x - 38, paper.y + 8);
+              beam.setAlpha(0);
+              this.tweens.add({ targets: beam, alpha: 0.72, duration: 120, yoyo: true, hold: 260, onComplete: () => beam.destroy() });
+              addFloatingLine(this, GAME_WIDTH / 2, 398, STRINGS.boss.cinematic.halfReceiptNote, COLORS.paperDim, 15, 1400);
+              this.time.delayedCall(520, () => {
+                audio.play('shutter');
+                const farFlash = this.add.circle(GAME_WIDTH - 150, 84, 10, COLORS.white, 0.42);
+                farFlash.setScrollFactor(0);
+                farFlash.setDepth(162);
+                this.tweens.add({ targets: farFlash, scale: 2.6, alpha: 0, duration: 360, onComplete: () => farFlash.destroy() });
+                addFloatingLine(this, GAME_WIDTH / 2, 438, STRINGS.boss.cinematic.halfReceiptShutter, COLORS.paper, 15, 1300);
+                this.time.delayedCall(900, () => this.finishRun(true));
+              });
+              this.time.delayedCall(1200, () => {
+                if (scanner.active) {
+                  this.tweens.add({ targets: scanner, alpha: 0, duration: 260, onComplete: () => scanner.destroy() });
+                }
+              });
+            },
+          });
+        },
+      });
+    });
   }
 
   private handleDeath(): void {

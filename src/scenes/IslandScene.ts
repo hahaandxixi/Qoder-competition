@@ -84,6 +84,7 @@ export class IslandScene extends Phaser.Scene {
   private gate2Light: Phaser.GameObjects.Arc | null = null;
   private gate2Shelf: Phaser.GameObjects.Container | null = null;
   private gate2Rope: Phaser.GameObjects.Graphics | null = null;
+  private gate2Bucket: Phaser.GameObjects.Container | null = null;
   private gate2BucketFill: Phaser.GameObjects.Graphics | null = null;
   private gate2BucketLabel: Phaser.GameObjects.Text | null = null;
   private gate2Barrier: Phaser.GameObjects.Rectangle | null = null;
@@ -139,6 +140,7 @@ export class IslandScene extends Phaser.Scene {
     this.gate2Light = null;
     this.gate2Shelf = null;
     this.gate2Rope = null;
+    this.gate2Bucket = null;
     this.gate2BucketFill = null;
     this.gate2BucketLabel = null;
     this.gate2Barrier = null;
@@ -176,6 +178,7 @@ export class IslandScene extends Phaser.Scene {
     this.buildTutorialSet();
     this.buildGate1Set();
     this.buildCheckpoint();
+    this.buildChalkGag();
     this.buildGate2Set();
     this.buildCheckpoint(CHECKPOINT2_X, '滑轮营地');
     this.buildExitSet();
@@ -789,8 +792,9 @@ export class IslandScene extends Phaser.Scene {
     pulley.strokeCircle(2992, 306, 9);
     pulley.lineBetween(2992, 288, 2992, 246);
 
-    const bucket = this.add.container(2952, 560);
+    const bucket = this.add.container(2952, this.gate2Passed ? 574 : 560);
     bucket.setDepth(15);
+    this.gate2Bucket = bucket;
     const bucketBody = this.add.graphics();
     bucketBody.fillStyle(0x5a4d3a, 1);
     bucketBody.fillRect(-24, -30, 48, 54);
@@ -894,16 +898,68 @@ export class IslandScene extends Phaser.Scene {
   private drawGate2Rope(): void {
     const rope = this.gate2Rope;
     const shelf = this.gate2Shelf;
-    if (!rope || !shelf) {
+    const bucket = this.gate2Bucket;
+    if (!rope || !shelf || !bucket) {
       return;
     }
+    const bucketTop = bucket.y - 26;
     rope.clear();
     rope.lineStyle(2, COLORS.coal, 0.6);
-    rope.lineBetween(2952, 534, 2992, 306);
+    rope.lineBetween(2952, bucketTop, 2992, 306);
     rope.lineBetween(2992, 306, SHELF_X - 46, shelf.y - 250);
     rope.lineStyle(1, COLORS.warning, 0.55);
-    rope.lineBetween(2952, 532, 2992, 304);
+    rope.lineBetween(2952, bucketTop - 2, 2992, 304);
     rope.lineBetween(2992, 304, SHELF_X - 46, shelf.y - 248);
+  }
+
+  /** 「画地为牢」：荒哥留下的圈已经拦不住横着走的螃蟹。 */
+  private buildChalkGag(): void {
+    const x = 2612;
+    const g = this.add.graphics();
+    g.setDepth(12);
+    g.lineStyle(5, COLORS.paper, 0.78);
+    g.strokeEllipse(x, GROUND_Y - 10, 150, 34);
+    g.lineStyle(2, COLORS.paperDim, 0.62);
+    g.strokeEllipse(x, GROUND_Y - 10, 124, 24);
+    for (let i = 0; i < 10; i += 1) {
+      const angle = (Math.PI * 2 * i) / 10;
+      g.fillStyle(COLORS.paper, 0.62);
+      g.fillRect(x + Math.cos(angle) * 72 - 3, GROUND_Y - 11 + Math.sin(angle) * 16, 6, 3);
+    }
+    g.lineStyle(2, COLORS.paperDim, 0.5);
+    for (let i = 0; i < 5; i += 1) {
+      g.lineBetween(x + 54 + i * 12, GROUND_Y - 6, x + 62 + i * 12, GROUND_Y - 3);
+    }
+    addHotTag(this, x + 68, 518, STRINGS.act2.chalkSign, COLORS.paperDim, -0.04).setDepth(12);
+    const note = this.add.text(x + 68, 548, STRINGS.act2.chalkNote, {
+      fontFamily: FONTS.mono,
+      fontSize: '9px',
+      color: CSS.paperDim,
+    });
+    note.setOrigin(0.5);
+    note.setAlpha(0.7);
+    note.setDepth(12);
+
+    const crab = this.add.image(x - 16, GROUND_Y - 17, TEX.crab);
+    crab.setDepth(14);
+    crab.setScale(0.92);
+    crab.setAlpha(0.95);
+    this.tweens.add({
+      targets: crab,
+      x: x + 62,
+      duration: 2600,
+      ease: 'Sine.easeInOut',
+      onComplete: () => {
+        this.tweens.add({
+          targets: crab,
+          y: crab.y - 2,
+          duration: 640,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
+      },
+    });
   }
 
   private buildCheckpoint(x = CHECKPOINT_X, labelText = '临时营地'): void {
@@ -1715,6 +1771,15 @@ export class IslandScene extends Phaser.Scene {
     this.beginGateLock();
     this.gate2Epoch += 1;
     const epoch = this.gate2Epoch;
+    if (this.gate2Shelf) {
+      this.tweens.killTweensOf(this.gate2Shelf);
+      this.gate2Shelf.setY(636);
+    }
+    if (this.gate2Bucket) {
+      this.tweens.killTweensOf(this.gate2Bucket);
+      this.gate2Bucket.setY(560);
+    }
+    this.drawGate2Rope();
     this.hud.toast(STRINGS.act2.gate2Demo, 'paper');
     audio.play('waterDrip');
 
@@ -1754,19 +1819,37 @@ export class IslandScene extends Phaser.Scene {
         },
       });
     }
-    audio.play('ropeTension');
-    if (this.gate2Shelf) {
-      this.tweens.add({
-        targets: this.gate2Shelf,
-        y: 590,
-        duration: 900,
-        delay: 900,
-        ease: 'Sine.easeInOut',
-        yoyo: true,
-        hold: 260,
-        onUpdate: () => this.drawGate2Rope(),
-      });
-    }
+    this.time.delayedCall(900, () => {
+      if (epoch !== this.gate2Epoch || this.finished) {
+        return;
+      }
+      audio.play('ropeTension');
+      if (this.gate2Bucket) {
+        this.tweens.add({
+          targets: this.gate2Bucket,
+          y: 574,
+          duration: 500,
+          ease: 'Sine.easeInOut',
+          onUpdate: () => this.drawGate2Rope(),
+        });
+      }
+    });
+    this.time.delayedCall(1160, () => {
+      if (epoch !== this.gate2Epoch || this.finished) {
+        return;
+      }
+      if (this.gate2Shelf) {
+        this.tweens.add({
+          targets: this.gate2Shelf,
+          y: 500,
+          duration: 760,
+          ease: 'Sine.easeInOut',
+          yoyo: true,
+          hold: 320,
+          onUpdate: () => this.drawGate2Rope(),
+        });
+      }
+    });
     this.time.delayedCall(1500, () => {
       if (epoch !== this.gate2Epoch || this.finished) {
         return;
@@ -1774,7 +1857,7 @@ export class IslandScene extends Phaser.Scene {
       audio.play('waterDrip');
       this.cameras.main.shake(90, 0.004);
     });
-    this.time.delayedCall(2550, () => {
+    this.time.delayedCall(2300, () => {
       if (epoch !== this.gate2Epoch || this.finished) {
         return;
       }
@@ -1784,8 +1867,8 @@ export class IslandScene extends Phaser.Scene {
       this.tweens.add({
         targets: tag,
         alpha: 0,
-        delay: 900,
-        duration: 320,
+        delay: 480,
+        duration: 260,
         onComplete: () => tag.destroy(),
       });
     });
@@ -1837,8 +1920,17 @@ export class IslandScene extends Phaser.Scene {
           return;
         }
         this.releaseGateControls();
+        if (this.gate2Shelf) {
+          this.tweens.killTweensOf(this.gate2Shelf);
+          this.gate2Shelf.setY(636);
+        }
+        if (this.gate2Bucket) {
+          this.tweens.killTweensOf(this.gate2Bucket);
+          this.gate2Bucket.setY(560);
+        }
         this.drawGate2Water(0.12, 0);
         this.gate2BucketLabel?.setText('空桶');
+        this.drawGate2Rope();
         this.hud.toast(failReason === 'timeout' ? STRINGS.door.timeout : STRINGS.door.wrong, 'rust');
       },
     });
@@ -1863,6 +1955,19 @@ export class IslandScene extends Phaser.Scene {
     audio.play('ropeTension');
     this.cameras.main.shake(180, 0.007);
     this.gate2BucketLabel?.setText('满桶');
+    if (this.gate2Shelf) {
+      this.tweens.killTweensOf(this.gate2Shelf);
+    }
+    if (this.gate2Bucket) {
+      this.tweens.killTweensOf(this.gate2Bucket);
+      this.tweens.add({
+        targets: this.gate2Bucket,
+        y: 574,
+        duration: 500,
+        ease: 'Sine.easeInOut',
+        onUpdate: () => this.drawGate2Rope(),
+      });
+    }
     if (this.gate2BucketFill) {
       this.tweens.addCounter({
         from: 0.78,

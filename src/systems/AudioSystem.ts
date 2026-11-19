@@ -23,6 +23,7 @@ type SoundName =
   | 'stagger'
   | 'burst'
   | 'paper'
+  | 'printerJam'
   | 'rewind'
   | 'bell'
   | 'spray'
@@ -218,6 +219,11 @@ class AudioSystem {
         // 吐纸：一段短促的“滋啦”抖纸声。
         this.noise(now, 0.16, 0.05);
         this.tone(now, 900, 0.13, 'triangle', 0.03, 320);
+        break;
+      case 'printerJam':
+        // 打印机卡纸：低频机械闷响，和扫码的“滴”明确分开。
+        this.tone(now, 120, 0.13, 'square', 0.04, 62);
+        this.noise(now, 0.09, 0.03);
         break;
       case 'rewind':
         // 磁带倒带：先升后降的卷带啸叫。

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { addScanlines, glitchText, paperButton, paperPanel, stamp } from '../art/uiKit';
+import { addFloatingLine, addScanlines, glitchText, halfReceipt, paperButton, paperPanel, stamp } from '../art/uiKit';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/balance';
 import { COLORS, CSS, FONTS, TEX } from '../config/theme';
 import { STRINGS, getCard } from '../data';
@@ -35,11 +35,14 @@ export class ResultScene extends Phaser.Scene {
   private shouldRecord = false;
   private best: BestRecord = {
     cleared: false,
+    act1Cleared: false,
+    act2Cleared: false,
     bestTimeMs: 0,
     bestCorrect: 0,
     runs: 0,
   };
   private isNewBest = false;
+  private finalEnding = false;
   private cleanups: Array<() => void> = [];
 
   constructor() {
@@ -54,6 +57,7 @@ export class ResultScene extends Phaser.Scene {
       this.registry.set('lastResult', data.payload);
     }
     this.isNewBest = false;
+    this.finalEnding = false;
   }
 
   create(): void {
@@ -70,10 +74,21 @@ export class ResultScene extends Phaser.Scene {
       this.best = SaveSystem.getBest();
     }
 
+    this.finalEnding =
+      this.payload.victory &&
+      this.payload.act === 2 &&
+      this.payload.temporary !== true &&
+      this.best.act1Cleared &&
+      this.best.act2Cleared;
+
     this.cameras.main.fadeIn(240, 23, 19, 16);
     this.buildBackground();
-    this.buildContent();
-    this.bindKeyboard();
+    if (this.finalEnding) {
+      this.buildFinalEnding();
+    } else {
+      this.buildContent();
+      this.bindKeyboard();
+    }
 
     addScanlines(this, 420);
     this.events.once('shutdown', () => {
@@ -221,6 +236,18 @@ export class ResultScene extends Phaser.Scene {
       reason.setOrigin(0.5);
       reason.setAlpha(0.8);
       reason.setDepth(3);
+    }
+
+    if (victory && !act2) {
+      const half = halfReceipt(this, 1038, 106, {
+        width: 210,
+        height: 78,
+        label: STRINGS.boss.cinematic.halfReceipt,
+        angle: -0.08,
+      });
+      half.setDepth(4);
+      half.setAlpha(0);
+      this.tweens.add({ targets: half, alpha: 1, y: 112, delay: 260, duration: 420, ease: 'Back.easeOut' });
     }
 
     const panel = paperPanel(this, GAME_WIDTH / 2, 382, 930, 360, {
@@ -417,6 +444,181 @@ export class ResultScene extends Phaser.Scene {
     });
     footer.setOrigin(0.5, 1);
     footer.setAlpha(0.58);
+  }
+
+  /** 两幕通关：结算机打印最后一张过期件，扫码后只留下阿浣的回答。 */
+  private buildFinalEnding(): void {
+    audio.setMusic('result');
+    const dim = this.add.graphics();
+    dim.fillStyle(COLORS.coal, 0.78);
+    dim.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    dim.setDepth(2);
+    const glow = this.add.ellipse(GAME_WIDTH / 2, 380, 880, 420, COLORS.warning, 0.07);
+    glow.setBlendMode(Phaser.BlendModes.ADD);
+    glow.setDepth(2);
+
+    const props = this.add.container(0, 0);
+    props.setDepth(3);
+
+    const machine = this.add.container(GAME_WIDTH / 2, 114);
+    const mg = this.add.graphics();
+    mg.fillStyle(COLORS.coal, 0.98);
+    mg.fillRect(-244, -50, 488, 100);
+    mg.lineStyle(3, COLORS.warning, 0.7);
+    mg.strokeRect(-244, -50, 488, 100);
+    mg.fillStyle(COLORS.rust, 0.8);
+    mg.fillRect(-244, -50, 488, 10);
+    mg.fillStyle(COLORS.coalSoft, 1);
+    mg.fillRect(-214, -24, 290, 48);
+    mg.lineStyle(2, COLORS.paperDim, 0.45);
+    mg.strokeRect(-214, -24, 290, 48);
+    mg.fillStyle(COLORS.paperDim, 0.65);
+    mg.fillRect(-196, -18, 254, 4);
+    mg.fillStyle(COLORS.neon, 0.9);
+    mg.fillCircle(202, -2, 6);
+    mg.fillStyle(COLORS.warning, 0.85);
+    mg.fillRect(154, 22, 96, 6);
+    machine.add(mg);
+    const machineLabel = this.add.text(0, 34, STRINGS.result.finalMachine, {
+      fontFamily: FONTS.mono,
+      fontSize: '12px',
+      color: CSS.paper,
+      fontStyle: 'bold',
+    });
+    machineLabel.setOrigin(0.5);
+    machine.add(machineLabel);
+    props.add(machine);
+
+    const strip = this.add.container(GAME_WIDTH / 2, 312);
+    const sg = this.add.graphics();
+    sg.fillStyle(COLORS.coal, 0.3);
+    sg.fillRect(-258, -104, 516, 216);
+    sg.fillStyle(COLORS.paper, 1);
+    sg.fillRect(-264, -112, 516, 216);
+    sg.lineStyle(3, COLORS.rust, 0.85);
+    sg.strokeRect(-264, -112, 516, 216);
+    sg.fillStyle(COLORS.warning, 0.82);
+    sg.fillRect(-264, -112, 516, 10);
+    sg.fillStyle(COLORS.coal, 0.22);
+    for (let y = -80; y < 78; y += 26) {
+      sg.fillRect(-238, y, 462, 1);
+    }
+    sg.fillStyle(COLORS.coal, 0.55);
+    for (let i = 0; i < 24; i += 1) {
+      sg.fillRect(-238 + i * 12, 74, 3 + (i % 3), 14);
+    }
+    strip.add(sg);
+    const stripTitle = this.add.text(0, -86, 'TASK RECEIPT // OVERDUE', {
+      fontFamily: FONTS.mono,
+      fontSize: '13px',
+      color: CSS.rust,
+      fontStyle: 'bold',
+    });
+    stripTitle.setOrigin(0.5);
+    const question = this.add.text(0, -8, STRINGS.result.finalQuestion, {
+      fontFamily: FONTS.display,
+      fontSize: '30px',
+      color: CSS.coal,
+      fontStyle: 'bold',
+      align: 'center',
+    });
+    question.setOrigin(0.5);
+    const stripSub = this.add.text(0, 38, '404 // 待派件', {
+      fontFamily: FONTS.mono,
+      fontSize: '11px',
+      color: CSS.rust,
+    });
+    stripSub.setOrigin(0.5);
+    stripSub.setAlpha(0.8);
+    strip.add([stripTitle, question, stripSub]);
+    strip.setAlpha(0);
+    strip.setScale(1, 0.06);
+    props.add(strip);
+    this.time.delayedCall(180, () => {
+      audio.play('paper');
+      this.tweens.add({ targets: strip, alpha: 1, scaleY: 1, duration: 620, ease: 'Back.easeOut' });
+    });
+
+    const raccoon = this.add.image(302, 556, TEX.raccoon);
+    raccoon.setScale(0.88);
+    raccoon.setDepth(3);
+    const stack = this.add.container(392, 520);
+    const stackG = this.add.graphics();
+    for (let i = 0; i < 3; i += 1) {
+      stackG.fillStyle(COLORS.paper, 0.92 - i * 0.1);
+      stackG.fillRect(-78 + i * 6, -44 + i * 8, 146, 86);
+      stackG.lineStyle(2, COLORS.rust, 0.5);
+      stackG.strokeRect(-78 + i * 6, -44 + i * 8, 146, 86);
+      stackG.fillStyle(COLORS.coal, 0.28);
+      stackG.fillRect(-62 + i * 6, -22 + i * 8, 104, 2);
+      stackG.fillRect(-62 + i * 6, -8 + i * 8, 84, 2);
+    }
+    stack.add(stackG);
+    stack.setDepth(4);
+
+    const scanner = this.add.graphics();
+    scanner.fillStyle(COLORS.coal, 0.95);
+    scanner.fillRect(390, 540, 20, 12);
+    scanner.fillStyle(COLORS.neon, 1);
+    scanner.fillRect(405, 543, 4, 6);
+    scanner.setDepth(5);
+
+    this.time.delayedCall(1180, () => {
+      audio.play('scan');
+      const beam = this.add.graphics();
+      beam.setDepth(5);
+      beam.lineStyle(2, COLORS.neon, 0.8);
+      beam.lineBetween(408, 546, GAME_WIDTH / 2 - 60, 260);
+      beam.setAlpha(0);
+      this.tweens.add({ targets: beam, alpha: 0.9, duration: 110, yoyo: true, hold: 240, onComplete: () => beam.destroy() });
+      const flash = this.add.circle(GAME_WIDTH / 2 - 60, 260, 12, COLORS.neon, 0.35);
+      flash.setDepth(5);
+      this.tweens.add({ targets: flash, scale: 2.2, alpha: 0, duration: 320, onComplete: () => flash.destroy() });
+      addFloatingLine(this, GAME_WIDTH / 2 - 40, 238, STRINGS.result.finalScan, COLORS.neon, 26, 900);
+    });
+
+    const answer = this.add.text(GAME_WIDTH / 2, 356, STRINGS.result.finalAnswer, {
+      fontFamily: FONTS.display,
+      fontSize: '48px',
+      color: CSS.paper,
+      fontStyle: 'bold',
+      align: 'center',
+    });
+    answer.setOrigin(0.5);
+    answer.setDepth(6);
+    answer.setAlpha(0);
+
+    this.time.delayedCall(2100, () => {
+      audio.setMusic('none');
+      this.tweens.add({ targets: [props, raccoon, stack, scanner], alpha: 0, duration: 480, ease: 'Sine.easeIn' });
+      this.tweens.add({ targets: answer, alpha: 1, duration: 640, ease: 'Sine.easeOut' });
+    });
+
+    this.time.delayedCall(3200, () => {
+      const menu = paperButton(this, GAME_WIDTH / 2, 592, 260, 56, STRINGS.result.finalMenu, () => this.toMenu(), {
+        fill: COLORS.coal,
+        textColor: CSS.paper,
+        accent: COLORS.warning,
+        fontSize: 18,
+      });
+      menu.root.setDepth(7);
+      menu.root.setAlpha(0);
+      this.tweens.add({ targets: menu.root, alpha: 1, duration: 260 });
+      this.bindFinalKeyboard();
+    });
+  }
+
+  private bindFinalKeyboard(): void {
+    const keyboard = this.input.keyboard;
+    if (!keyboard) {
+      return;
+    }
+    const onEnter = () => this.toMenu();
+    const onEsc = () => this.toMenu();
+    keyboard.on('keydown-ENTER', onEnter);
+    keyboard.on('keydown-ESC', onEsc);
+    this.cleanups.push(() => keyboard.off('keydown-ENTER', onEnter));
+    this.cleanups.push(() => keyboard.off('keydown-ESC', onEsc));
   }
 
   private bindKeyboard(): void {

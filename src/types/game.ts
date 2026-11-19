@@ -106,6 +106,8 @@ export interface RunState {
 
 export interface BestRecord {
   cleared: boolean;
+  act1Cleared: boolean;
+  act2Cleared: boolean;
   bestTimeMs: number;
   bestCorrect: number;
   runs: number;

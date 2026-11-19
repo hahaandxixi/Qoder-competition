@@ -1737,26 +1737,73 @@ export class WastelandBossScene extends Phaser.Scene {
       this.boss.getMaxPhases(),
     );
 
-    const hand = this.add.container(1080, 258);
-    hand.setDepth(98);
-    const handG = this.add.graphics();
-    handG.lineStyle(10, COLORS.coal, 0.9);
-    handG.lineBetween(0, -118, 0, -18);
-    handG.fillStyle(COLORS.paper, 0.95);
-    handG.fillRect(-34, -26, 68, 52);
-    handG.fillStyle(COLORS.paperDim, 1);
-    for (let i = 0; i < 3; i += 1) {
-      handG.fillRect(-26 + i * 18, -42, 13, 24);
-    }
-    handG.fillStyle(COLORS.rust, 0.7);
-    handG.fillRect(-34, 20, 68, 6);
-    hand.add(handG);
-    hand.setAlpha(0);
-    this.tweens.add({ targets: hand, alpha: 1, y: 338, duration: 520, ease: 'Cubic.easeOut' });
+    const arm = this.add.container(0, 0);
+    arm.setDepth(98);
+    const armG = this.add.graphics();
+    armG.lineStyle(22, COLORS.coal, 0.92);
+    armG.lineBetween(962, 500, 1004, 428);
+    armG.lineStyle(14, COLORS.coalSoft, 1);
+    armG.lineBetween(966, 496, 1002, 432);
+    armG.lineStyle(4, COLORS.rust, 0.75);
+    armG.lineBetween(984, 468, 1000, 440);
+    armG.fillStyle(COLORS.paper, 1);
+    armG.fillRoundedRect(992, 396, 44, 36, 8);
+    armG.fillStyle(COLORS.paperDim, 1);
+    armG.fillRoundedRect(992, 424, 14, 22, 6);
+    armG.fillRoundedRect(1010, 426, 14, 24, 6);
+    armG.fillRoundedRect(1028, 424, 12, 20, 6);
+    armG.fillStyle(COLORS.rust, 0.7);
+    armG.fillRect(1000, 408, 26, 4);
+    arm.add(armG);
+    arm.setAlpha(0);
+    this.tweens.add({ targets: arm, alpha: 1, duration: 420, ease: 'Cubic.easeOut' });
 
-    const sign = this.add.container(this.boss.x, this.boss.y - 74);
+    const bottle = this.buildBigWaterBottle();
+    bottle.setPosition(this.player.x + 42, this.player.y - 42);
+    bottle.setDepth(151);
+    bottle.setScale(0.4);
+    bottle.setAlpha(0);
+    this.time.delayedCall(320, () => {
+      this.tweens.add({
+        targets: bottle,
+        x: 1012,
+        y: 396,
+        scale: 0.92,
+        alpha: 1,
+        duration: 720,
+        ease: 'Cubic.easeOut',
+        onComplete: () => {
+          audio.play('waterDrip');
+          this.tweens.add({ targets: bottle, angle: -28, duration: 280, yoyo: true, repeat: 1, ease: 'Sine.easeInOut' });
+          addFloatingLine(this, 1000, 330, STRINGS.act2.bossDrink, COLORS.neon, 18, 1100);
+          for (let i = 0; i < 5; i += 1) {
+            const drop = this.add.circle(972 + (i % 3) * 10, 352, 3, COLORS.neon, 0.8);
+            drop.setDepth(150);
+            this.tweens.add({
+              targets: drop,
+              y: 430,
+              alpha: 0,
+              duration: 320 + i * 80,
+              delay: i * 90,
+              onComplete: () => drop.destroy(),
+            });
+          }
+          this.time.delayedCall(380, () => audio.play('waterDrip'));
+          this.time.delayedCall(760, () => {
+            this.tweens.add({ targets: bottle, alpha: 0, duration: 320, onComplete: () => bottle.destroy(true) });
+          });
+        },
+      });
+    });
+
+    const sign = this.add.container(1024, 218);
     sign.setDepth(150);
+    sign.setAlpha(0);
     const signG = this.add.graphics();
+    signG.lineStyle(6, COLORS.coal, 0.92);
+    signG.lineBetween(0, 44, 0, 196);
+    signG.lineStyle(2, COLORS.rust, 0.6);
+    signG.lineBetween(3, 50, 3, 194);
     signG.fillStyle(COLORS.paper, 0.98);
     signG.fillRect(-118, -48, 236, 96);
     signG.lineStyle(3, COLORS.coal, 0.9);
@@ -1773,22 +1820,11 @@ export class WastelandBossScene extends Phaser.Scene {
     signText.setOrigin(0.5);
     sign.add(signText);
 
-    const finalWord = this.add.text(this.boss.x, this.boss.y - 158, this.boss.config.defeatLine, {
-      fontFamily: FONTS.body,
-      fontSize: '16px',
-      color: CSS.paper,
-      fontStyle: 'bold',
-      stroke: CSS.coal,
-      strokeThickness: 5,
-      align: 'center',
-      wordWrap: { width: 420 },
+    this.time.delayedCall(1700, () => {
+      this.tweens.add({ targets: sign, alpha: 1, y: 208, duration: 320, ease: 'Back.easeOut' });
     });
-    finalWord.setOrigin(0.5);
-    finalWord.setDepth(150);
-    finalWord.setAlpha(0);
-    this.tweens.add({ targets: finalWord, alpha: 1, y: finalWord.y - 20, delay: 500, duration: 400 });
 
-    this.time.delayedCall(720, () => {
+    this.time.delayedCall(2320, () => {
       this.tweens.add({
         targets: sign,
         scaleX: 0,
@@ -1812,7 +1848,40 @@ export class WastelandBossScene extends Phaser.Scene {
       delay: 700,
       ease: 'Sine.easeInOut',
     });
-    this.time.delayedCall(2750, () => this.finishRun(true));
+    this.time.delayedCall(3220, () => this.finishRun(true));
+  }
+
+  private buildBigWaterBottle(): Phaser.GameObjects.Container {
+    const root = this.add.container(0, 0);
+    const g = this.add.graphics();
+    g.fillStyle(COLORS.coal, 0.28);
+    g.fillRoundedRect(-32, -88, 68, 154, 16);
+    g.fillStyle(COLORS.neon, 0.3);
+    g.fillRoundedRect(-30, -86, 60, 150, 14);
+    g.fillStyle(COLORS.neon, 0.5);
+    g.fillRoundedRect(-24, -22, 48, 78, 9);
+    g.lineStyle(3, COLORS.coal, 0.9);
+    g.strokeRoundedRect(-30, -86, 60, 150, 14);
+    g.fillStyle(COLORS.warning, 0.95);
+    g.fillRect(-17, -102, 34, 18);
+    g.lineStyle(2, COLORS.coal, 0.8);
+    g.strokeRect(-17, -102, 34, 18);
+    g.fillStyle(COLORS.paper, 0.94);
+    g.fillRect(-26, -46, 52, 34);
+    g.lineStyle(1, COLORS.rust, 0.7);
+    g.strokeRect(-26, -46, 52, 34);
+    g.fillStyle(COLORS.paper, 0.45);
+    g.fillRect(-22, -78, 6, 42);
+    root.add(g);
+    const label = this.add.text(0, -29, STRINGS.act2.bossBottle, {
+      fontFamily: FONTS.display,
+      fontSize: '17px',
+      color: CSS.coal,
+      fontStyle: 'bold',
+    });
+    label.setOrigin(0.5);
+    root.add(label);
+    return root;
   }
 
   private handleDeath(): void {

@@ -11,23 +11,29 @@ const DEFAULT_SAVE: SaveData = {
   mute: false,
   best: {
     cleared: false,
+    act1Cleared: false,
+    act2Cleared: false,
     bestTimeMs: 0,
     bestCorrect: 0,
     runs: 0,
   },
 };
 
-function isBestRecord(value: unknown): value is BestRecord {
+function normalizeBestRecord(value: unknown): BestRecord {
   if (typeof value !== 'object' || value === null) {
-    return false;
+    return { ...DEFAULT_SAVE.best };
   }
   const record = value as Record<string, unknown>;
-  return (
-    typeof record.cleared === 'boolean' &&
-    typeof record.bestTimeMs === 'number' &&
-    typeof record.bestCorrect === 'number' &&
-    typeof record.runs === 'number'
-  );
+  const cleared = record.cleared === true;
+  return {
+    cleared,
+    // 旧存档没有分幕字段；旧版能通第二幕必然先通过第一幕。
+    act1Cleared: record.act1Cleared === true || (record.act1Cleared === undefined && cleared),
+    act2Cleared: record.act2Cleared === true,
+    bestTimeMs: typeof record.bestTimeMs === 'number' ? record.bestTimeMs : 0,
+    bestCorrect: typeof record.bestCorrect === 'number' ? record.bestCorrect : 0,
+    runs: typeof record.runs === 'number' ? record.runs : 0,
+  };
 }
 
 function readSave(): SaveData {
@@ -43,7 +49,7 @@ function readSave(): SaveData {
     const record = parsed as Record<string, unknown>;
     return {
       mute: typeof record.mute === 'boolean' ? record.mute : DEFAULT_SAVE.mute,
-      best: isBestRecord(record.best) ? record.best : { ...DEFAULT_SAVE.best },
+      best: normalizeBestRecord(record.best),
     };
   } catch {
     return { ...DEFAULT_SAVE, best: { ...DEFAULT_SAVE.best } };
@@ -81,6 +87,12 @@ export const SaveSystem = {
 
     if (payload.victory) {
       best.cleared = true;
+      if (payload.act === 1) {
+        best.act1Cleared = true;
+      }
+      if (payload.act === 2 && payload.temporary !== true) {
+        best.act2Cleared = true;
+      }
       if (best.bestTimeMs === 0 || payload.timeMs < best.bestTimeMs) {
         best.bestTimeMs = payload.timeMs;
         isNewBest = true;
