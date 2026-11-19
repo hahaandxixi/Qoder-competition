@@ -236,6 +236,11 @@ function drawBoss(ctx: Ctx): void {
   const rustDark = '#6e2516';
   const warning = '#e8b23a';
   const neon = '#4be3c8';
+  const body = '#7447b8';
+  const bodyLight = '#a97be0';
+  const bodyShade = '#4e2f82';
+  const bodyDeep = '#2f1c52';
+  const cheek = '#d77ac8';
 
   // ground shadow
   ctx.fillStyle = 'rgba(0,0,0,0.38)';
@@ -263,19 +268,22 @@ function drawBoss(ctx: Ctx): void {
   u(ctx, 20, 5, 2, 4, paperShade, 4);
   u(ctx, 29, 3, 1, 3, paperShade, 4);
 
-  // short legs and paper boots
-  u(ctx, 15, 39, 6, 9, paperShade, 4);
-  u(ctx, 25, 39, 6, 9, paperShade, 4);
+  // short purple legs and paper boots
+  u(ctx, 15, 39, 6, 9, body, 4);
+  u(ctx, 15, 39, 1, 9, bodyShade, 4);
+  u(ctx, 25, 39, 6, 9, body, 4);
+  u(ctx, 25, 39, 1, 9, bodyShade, 4);
   u(ctx, 12, 47, 10, 4, dark, 4);
   u(ctx, 24, 47, 10, 4, dark, 4);
   u(ctx, 13, 47, 7, 1, paperDeep, 4);
   u(ctx, 25, 47, 7, 1, paperDeep, 4);
 
-  // onesie body
+  // purple onesie body
   u(ctx, 14, 23, 18, 19, dark, 4);
-  u(ctx, 15, 24, 16, 17, paper, 4);
-  u(ctx, 15, 24, 2, 17, paperShade, 4);
-  u(ctx, 29, 24, 2, 17, paperShade, 4);
+  u(ctx, 15, 24, 16, 17, body, 4);
+  u(ctx, 15, 24, 2, 17, bodyShade, 4);
+  u(ctx, 29, 24, 2, 17, bodyShade, 4);
+  u(ctx, 17, 24, 12, 2, bodyLight, 4);
   u(ctx, 17, 38, 13, 2, rustDark, 4);
   u(ctx, 22, 36, 2, 3, rust, 4);
 
@@ -304,22 +312,22 @@ function drawBoss(ctx: Ctx): void {
   u(ctx, 7, 33, 2, 2, paperDeep, 4);
   u(ctx, 36, 33, 2, 2, paperDeep, 4);
 
-  // arms and hands gripping the stamp edges
-  u(ctx, 11, 28, 5, 10, paper, 4);
-  u(ctx, 11, 28, 1, 10, paperShade, 4);
-  u(ctx, 31, 28, 5, 10, paper, 4);
-  u(ctx, 35, 28, 1, 10, paperShade, 4);
-  u(ctx, 8, 35, 4, 4, paper, 4);
-  u(ctx, 36, 35, 4, 4, paper, 4);
+  // purple arms and hands gripping the stamp edges
+  u(ctx, 11, 28, 5, 10, body, 4);
+  u(ctx, 11, 28, 1, 10, bodyShade, 4);
+  u(ctx, 31, 28, 5, 10, body, 4);
+  u(ctx, 35, 28, 1, 10, bodyShade, 4);
+  u(ctx, 8, 35, 4, 4, bodyLight, 4);
+  u(ctx, 36, 35, 4, 4, bodyLight, 4);
   u(ctx, 8, 38, 1, 1, rust, 4);
   u(ctx, 39, 38, 1, 1, rust, 4);
 
-  // oversized baby head
+  // oversized purple baby head
   u(ctx, 9, 4, 26, 21, dark, 4);
-  u(ctx, 10, 5, 24, 19, paper, 4);
-  u(ctx, 10, 5, 24, 2, '#f5ecd8', 4);
-  u(ctx, 10, 22, 24, 2, paperShade, 4);
-  u(ctx, 31, 7, 3, 10, paperShade, 4);
+  u(ctx, 10, 5, 24, 19, body, 4);
+  u(ctx, 10, 5, 24, 2, bodyLight, 4);
+  u(ctx, 10, 22, 24, 2, bodyShade, 4);
+  u(ctx, 31, 7, 3, 10, bodyShade, 4);
 
   // printer scar and bolts
   u(ctx, 11, 17, 4, 1, paperDeep, 4);
@@ -327,8 +335,8 @@ function drawBoss(ctx: Ctx): void {
   u(ctx, 30, 18, 1, 1, warning, 4);
 
   // brows, eyes, cheeks
-  u(ctx, 14, 11, 6, 1, rustDark, 4);
-  u(ctx, 26, 11, 6, 1, rustDark, 4);
+  u(ctx, 14, 11, 6, 1, bodyDeep, 4);
+  u(ctx, 26, 11, 6, 1, bodyDeep, 4);
   u(ctx, 14, 13, 6, 5, dark, 4);
   u(ctx, 26, 13, 6, 5, dark, 4);
   u(ctx, 15, 14, 4, 3, '#f7f1e4', 4);
@@ -337,12 +345,12 @@ function drawBoss(ctx: Ctx): void {
   u(ctx, 29, 14, 2, 3, dark, 4);
   u(ctx, 17, 14, 1, 1, neon, 4);
   u(ctx, 29, 14, 1, 1, neon, 4);
-  u(ctx, 13, 18, 3, 1, rust, 4);
-  u(ctx, 30, 18, 3, 1, rust, 4);
+  u(ctx, 13, 18, 3, 1, cheek, 4);
+  u(ctx, 30, 18, 3, 1, cheek, 4);
 
   // solemn little mouth
   u(ctx, 20, 20, 5, 1, ink, 4);
-  u(ctx, 21, 21, 3, 1, paperShade, 4);
+  u(ctx, 21, 21, 3, 1, bodyShade, 4);
 
   // paper feed slot behind one ear
   u(ctx, 34, 9, 3, 5, ink, 4);

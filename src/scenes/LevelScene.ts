@@ -535,7 +535,7 @@ export class LevelScene extends Phaser.Scene {
     parcelG.fillRect(-32, -30, 64, 8);
     parcelG.fillStyle(COLORS.warning, 0.85);
     parcelG.fillRect(-4, -46, 8, 46);
-    const parcelLabel = this.add.text(0, -18, '甄领先', {
+    const parcelLabel = this.add.text(0, -18, '灭霸', {
       fontFamily: FONTS.mono,
       fontSize: '10px',
       color: CSS.coal,
@@ -603,7 +603,7 @@ export class LevelScene extends Phaser.Scene {
       fontStyle: 'bold',
     });
     title.setOrigin(0.5);
-    const sub = this.add.text(0, -156, 'TOP FLOOR · 甄领先', {
+    const sub = this.add.text(0, -156, 'TOP FLOOR · 灭霸', {
       fontFamily: FONTS.mono,
       fontSize: '10px',
       color: CSS.warning,

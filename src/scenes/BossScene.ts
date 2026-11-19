@@ -803,7 +803,7 @@ export class BossScene extends Phaser.Scene {
       if (epoch !== this.introEpoch) {
         return;
       }
-      const nameStamp = stamp(this, BOSS_HOVER_X, BOSS_HOVER_Y + 42, STRINGS.boss.cinematic.screenName.split('｜')[0] ?? '甄领先', {
+      const nameStamp = stamp(this, BOSS_HOVER_X, BOSS_HOVER_Y + 42, STRINGS.boss.cinematic.screenName.split('｜')[0] ?? '灭霸', {
         color: COLORS.rust,
         fontSize: 22,
         angle: 0.08,
@@ -1677,7 +1677,7 @@ export class BossScene extends Phaser.Scene {
     });
     receiptHeader.setOrigin(0.5);
     const lines = [
-      '收件人：甄领先',
+      '收件人：灭霸',
       '代签人：灭建国',
       '与收件人关系：父',
     ];
@@ -2262,6 +2262,77 @@ export class BossScene extends Phaser.Scene {
       this.quizOverlay?.cancel();
       this.parryActive = false;
     }
+    this.hud.setVisible(false);
+    this.time.delayedCall(120, () => {
+      this.boss.clearTint();
+      this.dropBossStamp();
+    });
+  }
+
+  private dropBossStamp(): void {
+    const stampRoot = this.add.container(this.boss.x - 12, this.boss.y + 26);
+    stampRoot.setDepth(158);
+    const g = this.add.graphics();
+    g.fillStyle(COLORS.coal, 0.34);
+    g.fillEllipse(0, 48, 100, 18);
+    g.fillStyle(COLORS.coal, 1);
+    g.fillRect(-42, -14, 84, 30);
+    g.fillStyle(COLORS.rustDark, 1);
+    g.fillRect(-38, -10, 76, 22);
+    g.fillStyle(COLORS.rust, 1);
+    g.fillRect(-34, -8, 68, 5);
+    g.fillStyle(COLORS.coal, 0.96);
+    g.fillRect(-10, -56, 20, 42);
+    g.fillStyle(COLORS.warning, 0.9);
+    g.fillRect(-5, -51, 10, 5);
+    g.lineStyle(2, COLORS.paper, 0.24);
+    g.strokeRect(-34, -8, 68, 18);
+    stampRoot.add(g);
+    stampRoot.setRotation(-0.04);
+    this.tweens.add({
+      targets: stampRoot,
+      y: 606,
+      rotation: 0.2,
+      duration: 620,
+      ease: 'Cubic.easeIn',
+      onComplete: () => {
+        audio.play('stampThud');
+        this.cameras.main.shake(140, 0.008);
+        pixelBurst(this, this.boss.x - 12, 600, COLORS.paperDark, 9, 0.8);
+        this.time.delayedCall(250, () => this.showPlayerDefeatBubble());
+      },
+    });
+  }
+
+  private showPlayerDefeatBubble(): void {
+    if (this.finished !== true || this.transitioning) {
+      return;
+    }
+    this.player.setFlipX(false);
+    const bubble = speechBubble(this, this.player.x, this.player.y - 94, STRINGS.boss.playerDefeatLine, {
+      maxWidth: 340,
+      fontSize: 24,
+      color: COLORS.warning,
+      tail: 'center',
+    });
+    bubble.setDepth(170);
+    bubble.setAlpha(0);
+    this.tweens.add({ targets: bubble, alpha: 1, duration: 180, ease: 'Sine.easeOut' });
+    this.time.delayedCall(1500, () => {
+      this.tweens.add({
+        targets: bubble,
+        alpha: 0,
+        duration: 260,
+        ease: 'Sine.easeIn',
+        onComplete: () => {
+          bubble.destroy(true);
+          this.startVictoryHandoff();
+        },
+      });
+    });
+  }
+
+  private startVictoryHandoff(): void {
     audio.play('victory');
     this.cameras.main.shake(360, 0.018);
     this.cameras.main.flash(220, 255, 247, 228, false);
@@ -2280,18 +2351,6 @@ export class BossScene extends Phaser.Scene {
         this.cameras.main.shake(100, 0.006);
       });
     }
-    const finalWord = this.add.text(this.boss.x, this.boss.y - 150, this.boss.config.defeatLine, {
-      fontFamily: FONTS.body,
-      fontSize: '16px',
-      color: CSS.paper,
-      fontStyle: 'bold',
-      stroke: CSS.coal,
-      strokeThickness: 5,
-      align: 'center',
-      wordWrap: { width: 420 },
-    });
-    finalWord.setOrigin(0.5);
-    finalWord.setDepth(150);
     const winStamp = stamp(this, GAME_WIDTH / 2, 280, STRINGS.boss.defeated, {
       color: COLORS.rust,
       fontSize: 42,
@@ -2330,7 +2389,7 @@ export class BossScene extends Phaser.Scene {
       lost.setDepth(59);
       lost.setAlpha(0);
       this.tweens.add({ targets: lost, alpha: 0.86, duration: 220, yoyo: true, hold: 520, onComplete: () => lost.destroy() });
-      this.tweens.add({ targets: [finalWord, winStamp], alpha: 0, duration: 520, ease: 'Sine.easeOut' });
+      this.tweens.add({ targets: winStamp, alpha: 0, duration: 520, ease: 'Sine.easeOut' });
     });
 
     this.time.delayedCall(650, () => {

@@ -278,7 +278,7 @@ class AudioSystem {
         this.tone(now + 0.11, 1800, 0.035, 'square', 0.028, 1400);
         break;
       case 'canClink':
-        // 空罐轻响：薄铁皮，比甄领先的方章轻。
+        // 空罐轻响：薄铁皮，比灭霸的方章轻。
         this.tone(now, 1568, 0.09, 'sine', 0.035, 1530);
         this.tone(now + 0.025, 2093, 0.06, 'triangle', 0.02, 2000);
         this.noise(now, 0.035, 0.025);
