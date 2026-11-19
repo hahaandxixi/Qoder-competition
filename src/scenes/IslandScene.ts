@@ -39,14 +39,14 @@ import { audio } from '../systems/AudioSystem';
 const ISLAND_WIDTH = 4300;
 const GROUND_Y = 636;
 const GROUND_SEGMENTS: Array<[number, number]> = [
-  [0, 1850],
+  [0, 1280],
+  [1520, 330],
   [2130, 2170],
 ];
 const PLATFORMS: Array<[number, number, number, number]> = [
   [420, 520, 170, 26],
   [760, 456, 180, 26],
-  [1130, 524, 150, 24],
-  [1460, 458, 180, 26],
+  [1560, 430, 180, 26],
   [2290, 512, 210, 26],
   [2480, 448, 180, 26],
   [3520, 500, 200, 26],
@@ -60,6 +60,11 @@ const SHELF_X = 3060;
 const EXIT_X = 4070;
 const BRIDGE_X = 1990;
 const BRIDGE_WIDTH = 280;
+const MISSILE_GAP_START = 1280;
+const MISSILE_GAP_END = 1520;
+const MISSILE_LAUNCH_X = 1600;
+const MISSILE_Y = 530;
+const BRIDGE_CHECKPOINT_X = 1080;
 
 export class IslandScene extends Phaser.Scene {
   private run!: RunState;
@@ -93,6 +98,17 @@ export class IslandScene extends Phaser.Scene {
   private tutorialCrate: Phaser.GameObjects.Container | null = null;
   private tutorialDrone: Phaser.GameObjects.Image | null = null;
   private viewfinder: Viewfinder | null = null;
+  private missileLauncher: Phaser.GameObjects.Container | null = null;
+  private missileDrone: Phaser.GameObjects.Image | null = null;
+  private missileLight: Phaser.GameObjects.Arc | null = null;
+  private missileGuide: Phaser.GameObjects.Graphics | null = null;
+  private activeMissile: Phaser.GameObjects.Image | null = null;
+  private missileUsed = false;
+  private missileWarning = false;
+  private missileEpoch = 0;
+  private missileTutorialDone = false;
+  private missileTutorialActive = false;
+  private bridgeCheckpointToasted = false;
   private gate1Passed = false;
   private gate1DemoDone = false;
   private gate2Passed = false;
@@ -149,6 +165,16 @@ export class IslandScene extends Phaser.Scene {
     this.tutorialCrate = null;
     this.tutorialDrone = null;
     this.viewfinder = null;
+    this.missileLauncher = null;
+    this.missileDrone = null;
+    this.missileLight = null;
+    this.missileGuide = null;
+    this.activeMissile = null;
+    this.missileUsed = false;
+    this.missileWarning = false;
+    this.missileEpoch = 0;
+    this.missileTutorialActive = false;
+    this.bridgeCheckpointToasted = false;
     this.cardsChangedHandler = null;
     this.solids.length = 0;
     this.crabs.length = 0;
@@ -158,13 +184,16 @@ export class IslandScene extends Phaser.Scene {
     if (this.run.hp <= 0) {
       this.run.hp = PLAYER.maxHp;
     }
+    this.missileTutorialDone = this.run.act2BridgeCheckpoint === true;
     this.gate1Passed = this.run.act2Door1Passed;
     this.gate2Passed = this.run.act2Door2Passed;
     this.spawnPoint = this.gate2Passed
       ? { x: CHECKPOINT2_X, y: 560 }
       : this.gate1Passed
         ? { x: CHECKPOINT_X, y: 560 }
-        : { x: 150, y: 560 };
+        : this.run.act2BridgeCheckpoint
+          ? { x: BRIDGE_CHECKPOINT_X, y: 560 }
+          : { x: 150, y: 560 };
     this.pendingReason = STRINGS.act2.deathReason;
 
     this.physics.world.setBounds(0, 0, ISLAND_WIDTH, 1000);
@@ -176,7 +205,9 @@ export class IslandScene extends Phaser.Scene {
     this.buildGeometry();
     this.buildLandingSet();
     this.buildTutorialSet();
+    this.buildMissileSet();
     this.buildGate1Set();
+    this.buildCheckpoint(BRIDGE_CHECKPOINT_X, '断桥前');
     this.buildCheckpoint();
     this.buildChalkGag();
     this.buildGate2Set();
@@ -217,6 +248,9 @@ export class IslandScene extends Phaser.Scene {
     this.tickAlly(time);
     this.cleanupProjectiles(time);
     this.updateInteractions();
+    this.updateBridgeCheckpoint();
+    this.maybeStartMissileTutorial();
+    this.tickMissileChallenge();
 
     if (!this.respawning && !this.transitioning && this.player.y > WORLD.fallDamageY) {
       this.handleFall();
@@ -657,6 +691,262 @@ export class IslandScene extends Phaser.Scene {
     });
     const sign = addHotTag(this, 900, 462, 'LOOK // 先看框', COLORS.warning, -0.02);
     sign.setDepth(16);
+  }
+
+  private buildMissileSet(): void {
+    const root = this.add.container(MISSILE_LAUNCH_X, GROUND_Y);
+    root.setDepth(14);
+    const g = this.add.graphics();
+    g.fillStyle(COLORS.coal, 0.3);
+    g.fillEllipse(0, 2, 126, 16);
+    g.fillStyle(COLORS.coal, 0.85);
+    g.fillRect(-8, -104, 16, 104);
+    g.fillStyle(0x4d554c, 1);
+    g.fillRect(-84, -118, 84, 24);
+    g.lineStyle(2, COLORS.coal, 0.9);
+    g.strokeRect(-84, -118, 84, 24);
+    g.fillStyle(COLORS.warning, 0.75);
+    for (let x = -78; x < -10; x += 20) {
+      g.fillRect(x, -112, 10, 5);
+    }
+    g.fillStyle(COLORS.rust, 0.95);
+    g.fillRect(-84, -118, 6, 24);
+    g.fillStyle(COLORS.paper, 0.7);
+    g.fillRect(-48, -100, 34, 3);
+    root.add(g);
+    const label = this.add.text(-46, -138, '发射口 · 固定高度', {
+      fontFamily: FONTS.mono,
+      fontSize: '9px',
+      color: CSS.paperDim,
+    });
+    label.setOrigin(0.5);
+    label.setAlpha(0.72);
+    root.add(label);
+
+    const light = this.add.circle(-42, -126, 6, COLORS.coalFaint, 0.8);
+    light.setStrokeStyle(2, COLORS.coal, 1);
+    light.setDepth(16);
+    root.add(light);
+    this.missileLight = light;
+
+    const drone = this.add.image(-42, -184, TEX.drone);
+    drone.setScale(1.15);
+    drone.setDepth(15);
+    root.add(drone);
+    this.missileDrone = drone;
+    this.tweens.add({
+      targets: drone,
+      y: -174,
+      duration: 900,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+    this.missileLauncher = root;
+
+    const guide = this.add.graphics();
+    guide.setDepth(6);
+    guide.lineStyle(1, COLORS.warning, 0.28);
+    for (let x = MISSILE_GAP_START; x < MISSILE_LAUNCH_X - 64; x += 28) {
+      guide.lineBetween(x, MISSILE_Y, x + 14, MISSILE_Y);
+    }
+    guide.lineStyle(1, COLORS.paperDim, 0.35);
+    guide.lineBetween(MISSILE_GAP_START, MISSILE_Y - 16, MISSILE_GAP_START, MISSILE_Y + 16);
+    this.missileGuide = guide;
+
+    const planks = this.add.graphics();
+    planks.setDepth(13);
+    planks.fillStyle(0x5a4d3a, 1);
+    planks.fillRect(MISSILE_GAP_START - 44, GROUND_Y - 8, 40, 8);
+    planks.fillStyle(0x7a6a4f, 1);
+    planks.fillRect(MISSILE_GAP_START - 8, GROUND_Y - 10, 8, 10);
+    planks.lineStyle(2, COLORS.warning, 0.8);
+    planks.strokeRect(MISSILE_GAP_START - 44, GROUND_Y - 8, 40, 8);
+    const loose = addHotTag(this, MISSILE_GAP_START - 24, GROUND_Y - 62, '松动桥板', COLORS.warning, 0.04);
+    loose.setDepth(16);
+    loose.setScale(0.82);
+    const landing = addHotTag(this, MISSILE_GAP_END + 34, GROUND_Y - 38, '落点', COLORS.neon, -0.03);
+    landing.setDepth(16);
+    landing.setScale(0.72);
+    landing.setAlpha(0.7);
+    if (this.gate1Passed) {
+      root.setAlpha(0.5);
+      guide.setAlpha(0.15);
+      light.setFillStyle(COLORS.coalFaint, 0.8);
+    }
+  }
+
+  private updateBridgeCheckpoint(): void {
+    if (this.gate1Passed || this.run.act2BridgeCheckpoint) {
+      return;
+    }
+    if (this.player.x < BRIDGE_CHECKPOINT_X + 24 || this.player.x >= MISSILE_GAP_START) {
+      return;
+    }
+    this.run.act2BridgeCheckpoint = true;
+    this.spawnPoint = { x: BRIDGE_CHECKPOINT_X, y: 560 };
+    if (!this.bridgeCheckpointToasted) {
+      this.bridgeCheckpointToasted = true;
+      this.hud.toast(STRINGS.act2.bridgeCheckpoint, 'paper');
+    }
+  }
+
+  private maybeStartMissileTutorial(): void {
+    if (
+      this.gate1Passed ||
+      this.finished ||
+      this.missileTutorialDone ||
+      this.missileTutorialActive ||
+      this.quizOpen ||
+      this.rewardOpen ||
+      !this.run.act2BridgeCheckpoint ||
+      this.player.x < BRIDGE_CHECKPOINT_X + 40 ||
+      this.player.x > MISSILE_GAP_START - 48 ||
+      this.player.y < 580
+    ) {
+      return;
+    }
+    this.missileTutorialDone = true;
+    this.missileTutorialActive = true;
+    this.gateAnimating = true;
+    this.player.setControlEnabled(false);
+    this.player.setVelocity(0, 0);
+    this.touch?.setEnabled(false);
+    this.hud.setHint(null);
+    this.missileLight?.setFillStyle(COLORS.rust, 1);
+    this.missileDrone?.setTint(COLORS.rust);
+    audio.play('missileLock');
+    this.hud.toast(STRINGS.act2.missileTutorial, 'paper');
+    this.time.delayedCall(700, () => {
+      if (this.finished) {
+        return;
+      }
+      this.launchMissile(true);
+    });
+    this.time.delayedCall(2150, () => {
+      this.missileTutorialActive = false;
+      this.gateAnimating = false;
+      this.missileDrone?.clearTint();
+      if (!this.gate1Passed) {
+        this.missileLight?.setFillStyle(COLORS.warning, 0.85);
+      }
+      if (this.finished) {
+        return;
+      }
+      this.hud.toast(STRINGS.act2.bridgePrompt, 'paper');
+      this.player.setControlEnabled(true);
+      this.touch?.setEnabled(true);
+    });
+  }
+
+  private tickMissileChallenge(): void {
+    if (this.gate1Passed || this.finished || this.missileTutorialActive) {
+      return;
+    }
+    if (
+      !this.missileUsed &&
+      !this.missileWarning &&
+      !this.quizOpen &&
+      !this.gateAnimating &&
+      this.player.x >= MISSILE_GAP_START - 48 &&
+      this.player.x <= MISSILE_GAP_START + 12 &&
+      this.player.y > 545
+    ) {
+      this.startMissileWarning();
+    }
+    const missile = this.activeMissile;
+    if (!missile || !missile.active) {
+      return;
+    }
+    const bounds = missile.getBounds();
+    const playerBounds = this.player.getBounds();
+    if (Phaser.Geom.Intersects.RectangleToRectangle(bounds, playerBounds)) {
+      const hitX = missile.x;
+      missile.destroy();
+      this.activeMissile = null;
+      this.missileWarning = false;
+      this.missileLight?.setFillStyle(COLORS.warning, 0.85);
+      this.cameras.main.shake(160, 0.012);
+      pixelBurst(this, hitX, MISSILE_Y, COLORS.warning, 12, 1.4);
+      audio.play('gearToss');
+      if (this.player.takeDamage(24, hitX) > 0) {
+        this.hud.toast(STRINGS.act2.missileHit, 'rust');
+      }
+    }
+  }
+
+  private startMissileWarning(): void {
+    this.missileWarning = true;
+    this.missileEpoch += 1;
+    const epoch = this.missileEpoch;
+    this.missileLight?.setFillStyle(COLORS.rust, 1);
+    this.missileDrone?.setTint(COLORS.rust);
+    audio.play('missileLock');
+    addFloatingLine(this, MISSILE_GAP_START + 118, 476, STRINGS.act2.missileLock, COLORS.warning, 15, 1500);
+    this.cameras.main.shake(80, 0.003);
+    this.time.delayedCall(650, () => {
+      if (epoch !== this.missileEpoch || this.finished || this.gate1Passed) {
+        return;
+      }
+      this.launchMissile(false);
+    });
+  }
+
+  private launchMissile(tutorial: boolean): void {
+    if (!tutorial) {
+      this.missileUsed = true;
+    }
+    audio.play('missileLaunch');
+    const missile = this.add.image(MISSILE_LAUNCH_X - 76, MISSILE_Y, TEX.missile);
+    missile.setDepth(46);
+    missile.setScale(1.35);
+    missile.setFlipX(true);
+    if (!tutorial) {
+      this.activeMissile = missile;
+    }
+    const trail = this.time.addEvent({
+      delay: 55,
+      loop: true,
+      callback: () => {
+        if (!missile.active) {
+          return;
+        }
+        const spark = this.add.image(missile.x + 30, MISSILE_Y + Phaser.Math.Between(-3, 3), TEX.spark);
+        spark.setTint(COLORS.warning);
+        spark.setDepth(45);
+        spark.setAlpha(0.8);
+        this.tweens.add({ targets: spark, alpha: 0, scale: 0.3, duration: 180, onComplete: () => spark.destroy() });
+      },
+    });
+    this.tweens.add({
+      targets: missile,
+      x: -120,
+      duration: 3600,
+      ease: 'Linear',
+      onComplete: () => {
+        trail.remove(false);
+        missile.destroy();
+        if (!tutorial) {
+          this.activeMissile = null;
+          this.missileWarning = false;
+          this.missileLight?.setFillStyle(COLORS.warning, 0.85);
+        }
+      },
+    });
+  }
+
+  private resetMissileChallenge(): void {
+    this.missileEpoch += 1;
+    if (this.activeMissile) {
+      this.activeMissile.destroy();
+      this.activeMissile = null;
+    }
+    this.missileUsed = false;
+    this.missileWarning = false;
+    this.missileDrone?.clearTint();
+    if (!this.gate1Passed) {
+      this.missileLight?.setFillStyle(COLORS.warning, 0.85);
+    }
   }
 
   private buildGate1Set(): void {
@@ -1256,7 +1546,6 @@ export class IslandScene extends Phaser.Scene {
   private spawnCrabs(): void {
     const host = this.makeCrabHost();
     const placements: Array<[number, number]> = [
-      [1370, 598],
       [3200, 598],
     ];
     placements.forEach(([x, y]) => {
@@ -1591,16 +1880,89 @@ export class IslandScene extends Phaser.Scene {
     rope.lineTo(1690, 434);
     rope.lineTo(1836, 346);
     rope.strokePath();
-    demo.add([host, sign, drone, rope]);
+    const selfie = this.add.graphics();
+    selfie.lineStyle(4, COLORS.coal, 0.9);
+    selfie.lineBetween(1616, 552, 1662, 446);
+    selfie.lineStyle(1, COLORS.paperDim, 0.6);
+    selfie.lineBetween(1613, 552, 1659, 446);
+    selfie.fillStyle(COLORS.coal, 1);
+    selfie.fillRect(1651, 430, 28, 44);
+    selfie.fillStyle(COLORS.neon, 0.7);
+    selfie.fillRect(1655, 436, 20, 30);
+    selfie.fillStyle(COLORS.paper, 0.8);
+    selfie.fillRect(1658, 438, 14, 3);
+    selfie.fillRect(1658, 444, 9, 2);
+    selfie.fillRect(1658, 449, 12, 2);
+
+    const signal = addHotTag(this, 1628, 360, '信号 · 满格', COLORS.neon, 0.02);
+    signal.setScale(0.72);
+    const linking = addHotTag(this, 1836, 248, STRINGS.act2.gate1Linking, COLORS.warning, -0.02);
+    linking.setScale(0.78);
+    linking.setAlpha(0);
+
+    const hook = this.add.container(1712, 486);
+    const hg = this.add.graphics();
+    hg.lineStyle(3, COLORS.paperDim, 0.95);
+    hg.lineBetween(0, -24, 0, 10);
+    hg.lineStyle(7, COLORS.coal, 1);
+    hg.lineBetween(0, 4, 0, 22);
+    hg.lineStyle(3, COLORS.warning, 0.95);
+    hg.lineBetween(-4, 18, -22, 2);
+    hg.lineBetween(4, 18, 22, 2);
+    hg.lineStyle(2, COLORS.paper, 0.75);
+    hg.lineBetween(-2, 20, -19, 5);
+    hg.lineBetween(2, 20, 19, 5);
+    hook.add(hg);
+    hook.setAngle(0.28);
+    hook.setScale(0.92);
+
+    const taut = this.add.graphics();
+    taut.lineStyle(4, COLORS.rust, 0.9);
+    taut.lineBetween(1836, 346, 1712, 462);
+    taut.setAlpha(0);
+    demo.add([host, sign, drone, rope, selfie, signal, linking, hook, taut]);
 
     audio.play('droneFocus');
-    this.time.delayedCall(360, () => {
+    this.time.delayedCall(260, () => {
+      if (this.finished) {
+        return;
+      }
+      linking.setAlpha(0.95);
+      audio.play('droneFocus');
+    });
+    this.time.delayedCall(700, () => {
+      if (this.finished) {
+        return;
+      }
+      this.tweens.add({ targets: hook, angle: -0.08, y: 480, duration: 260, ease: 'Sine.easeOut' });
+      audio.play('gearToss');
+      addFloatingLine(this, 1712, 420, '挂钩张开', COLORS.warning, 15, 900);
+    });
+    this.time.delayedCall(1150, () => {
+      if (this.finished) {
+        return;
+      }
+      audio.play('canClink');
+      hook.setAngle(0);
+      this.tweens.add({ targets: sign, angle: 0.06, duration: 90, yoyo: true, repeat: 2 });
+      addFloatingLine(this, 1712, 430, '咔哒。', COLORS.paper, 18, 850);
+    });
+    this.time.delayedCall(1380, () => {
+      if (this.finished) {
+        return;
+      }
+      audio.play('ropeTension');
+      this.cameras.main.shake(180, 0.008);
+      this.tweens.add({ targets: taut, alpha: 1, duration: 90, yoyo: true, hold: 220 });
+      this.hud.toast(STRINGS.act2.gate1Hook, 'paper');
+    });
+    this.time.delayedCall(1550, () => {
       if (this.finished) {
         return;
       }
       audio.play('signScrape');
       this.tweens.add({
-        targets: [host, sign],
+        targets: [host, sign, selfie],
         x: '+=246',
         y: '+=10',
         angle: '+=0.16',
@@ -1608,9 +1970,9 @@ export class IslandScene extends Phaser.Scene {
         ease: 'Sine.easeIn',
       });
       this.tweens.add({
-        targets: drone,
+        targets: [drone, hook, linking],
         x: '+=286',
-        y: 300,
+        y: '+=10',
         angle: 8,
         duration: 1500,
         ease: 'Sine.easeInOut',
@@ -1621,6 +1983,7 @@ export class IslandScene extends Phaser.Scene {
         duration: 1500,
         ease: 'Sine.easeIn',
       });
+      this.hud.toast(STRINGS.act2.gate1Drag, 'rust');
     });
 
     const chars = ['亡', '命', '天', '涯'];
@@ -1635,7 +1998,7 @@ export class IslandScene extends Phaser.Scene {
       text.setDepth(41);
       text.setAlpha(0);
       demo.add(text);
-      this.time.delayedCall(700 + index * 250, () => {
+      this.time.delayedCall(1650 + index * 230, () => {
         if (this.finished) {
           return;
         }
@@ -1646,14 +2009,14 @@ export class IslandScene extends Phaser.Scene {
       });
     });
 
-    this.time.delayedCall(1520, () => {
+    this.time.delayedCall(2750, () => {
       if (this.finished) {
         return;
       }
-      this.hud.toast(STRINGS.act2.gate1Drag, 'rust');
-      this.cameras.main.shake(180, 0.008);
+      this.hud.toast(STRINGS.act2.gate1Chase, 'neon');
+      this.tweens.add({ targets: host, y: '+=6', duration: 120, yoyo: true, repeat: 1 });
     });
-    this.time.delayedCall(2450, () => {
+    this.time.delayedCall(3350, () => {
       if (this.finished) {
         return;
       }
@@ -1711,6 +2074,16 @@ export class IslandScene extends Phaser.Scene {
   private finishGate1(): void {
     this.gate1Passed = true;
     this.run.act2Door1Passed = true;
+    this.run.act2BridgeCheckpoint = false;
+    this.missileUsed = true;
+    this.missileWarning = false;
+    if (this.activeMissile) {
+      this.activeMissile.destroy();
+      this.activeMissile = null;
+    }
+    this.missileLauncher?.setAlpha(0.5);
+    this.missileGuide?.setAlpha(0.1);
+    this.missileLight?.setFillStyle(COLORS.coalFaint, 0.8);
     this.spawnPoint = { x: CHECKPOINT_X, y: 560 };
     this.player.heal(Math.round(PLAYER.maxHp * 0.3));
     this.run.hp = this.player.getHp();
@@ -1856,6 +2229,12 @@ export class IslandScene extends Phaser.Scene {
       }
       audio.play('waterDrip');
       this.cameras.main.shake(90, 0.004);
+    });
+    this.time.delayedCall(2050, () => {
+      if (epoch !== this.gate2Epoch || this.finished) {
+        return;
+      }
+      addFloatingLine(this, 2954, 352, STRINGS.act2.gate2Haoshi, COLORS.paper, 15, 1700);
     });
     this.time.delayedCall(2300, () => {
       if (epoch !== this.gate2Epoch || this.finished) {
@@ -2053,6 +2432,7 @@ export class IslandScene extends Phaser.Scene {
     this.pendingReason = STRINGS.act2.fall;
     this.player.setControlEnabled(false);
     this.touch?.setEnabled(false);
+    this.resetMissileChallenge();
     this.hud.toast(STRINGS.act2.fall, 'rust');
     this.player.takeDamage(PLAYER.fallRespawnDamage);
     if (this.finished) {

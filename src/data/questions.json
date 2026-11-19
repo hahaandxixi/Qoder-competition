@@ -240,6 +240,22 @@
     }
   },
   {
+    "id": "parry_xianglink_act2",
+    "mode": "parry",
+    "prompt": "刚才被它拖走的是？",
+    "options": ["路牌", "水桶", "补给箱"],
+    "answer": "路牌",
+    "reveal": "钩子先钩住路牌，再把它拖出镜头。这次换个方向：钩回自拍杆。",
+    "hints": ["看钩头后面的拖痕", "第二道门用的才是水桶"],
+    "cardId": "card_wangming",
+    "tags": ["荒野岛", "挂钩"],
+    "correctStamp": "钩回来了",
+    "slip": {
+      "title": "回放 · 钩头记录",
+      "lines": ["钩头张开", "钩住：路牌", "拖痕：亡命天涯"]
+    }
+  },
+  {
     "id": "parry_haoshi_act2",
     "mode": "parry",
     "prompt": "满桶悬在雨棚上方，阿浣该做哪一步？",

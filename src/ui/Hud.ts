@@ -435,14 +435,38 @@ export class Hud {
     });
   }
 
-  updateBoss(name: string, title: string, hp: number, maxHp: number, phase: number, totalPhases: number): void {
+  updateBoss(
+    name: string,
+    title: string,
+    hp: number,
+    maxHp: number,
+    phase: number,
+    totalPhases: number,
+    bar = 1,
+    totalBars = 1,
+  ): void {
     this.bossRoot.setVisible(true);
     this.bossName.setText(`${name} · ${title}`);
-    this.bossPhase.setText(`${STRINGS.hud.phase} ${phase}/${totalPhases}`);
+    this.bossPhase.setText(
+      totalBars > 1
+        ? bar >= 2
+          ? STRINGS.act2.secondPhaseLabel
+          : '第一阶段'
+        : `${STRINGS.hud.phase} ${phase}/${totalPhases}`,
+    );
     this.bossValue.setText(`${STRINGS.hud.bossHp} ${Math.max(0, Math.ceil(hp))} / ${maxHp}`);
     const ratio = Phaser.Math.Clamp(hp / maxHp, 0, 1);
     this.bossBar.clear();
-    drawSegmentBar(this.bossBar, 414, 68, 490, 12, ratio, COLORS.rust, 24);
+    if (totalBars > 1 && bar >= 2) {
+      drawSegmentBar(this.bossBar, 414, 62, 490, 5, 0, COLORS.rust, 24);
+      drawSegmentBar(this.bossBar, 414, 69, 490, 7, ratio, COLORS.rust, 24);
+    } else {
+      drawSegmentBar(this.bossBar, 414, 68, 490, 12, ratio, COLORS.rust, 24);
+    }
+  }
+
+  setBossVisible(visible: boolean): void {
+    this.bossRoot.setVisible(visible);
   }
 
   dispose(): void {

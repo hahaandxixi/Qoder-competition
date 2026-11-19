@@ -924,6 +924,7 @@ export class BossScene extends Phaser.Scene {
     floatText: (x: number, y: number, text: string, color?: number) => void;
     onPhaseReached: (phase: BossPhase) => void;
     onStaggered: () => void;
+    onFakeVictory: () => void;
     onDefeated: () => void;
   } {
     return {
@@ -939,6 +940,7 @@ export class BossScene extends Phaser.Scene {
         this.boss.setPosition(BOSS_HOVER_X, BOSS_HOVER_Y);
         this.nextAttackAt = this.time.now + 1100;
       },
+      onFakeVictory: () => undefined,
       onDefeated: () => this.handleBossDefeated(),
     };
   }

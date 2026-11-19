@@ -30,6 +30,8 @@ type SoundName =
   | 'stampThud'
   | 'scan'
   | 'droneFocus'
+  | 'missileLock'
+  | 'missileLaunch'
   | 'shutter'
   | 'canClink'
   | 'ropeTension'
@@ -255,6 +257,18 @@ class AudioSystem {
         this.tone(now, 520, 0.28, 'triangle', 0.035, 1280);
         this.tone(now + 0.11, 760, 0.22, 'sine', 0.025, 1760);
         this.noise(now, 0.18, 0.012);
+        break;
+      case 'missileLock':
+        // 导弹锁定：两短一长的窄频警报，和取景框对焦区分开。
+        this.tone(now, 980, 0.07, 'square', 0.045, 940);
+        this.tone(now + 0.13, 980, 0.07, 'square', 0.045, 940);
+        this.tone(now + 0.26, 1240, 0.16, 'triangle', 0.04, 1180);
+        break;
+      case 'missileLaunch':
+        // 横向导弹发射：低频推力 + 擦风噪声，方向感明显。
+        this.noise(now, 0.3, 0.055);
+        this.tone(now, 180, 0.32, 'sawtooth', 0.06, 70);
+        this.tone(now + 0.04, 760, 0.26, 'triangle', 0.03, 460);
         break;
       case 'shutter':
         // 快门：两下短促的机械“咔”。

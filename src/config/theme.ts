@@ -56,6 +56,7 @@ export const TEX = {
   islandSky: 'tex-island-sky',
   islandMid: 'tex-island-mid',
   drone: 'tex-drone',
+  missile: 'tex-missile',
   gear: 'tex-gear',
   crab: 'tex-crab',
   wastelandBoss: 'tex-wasteland-boss',

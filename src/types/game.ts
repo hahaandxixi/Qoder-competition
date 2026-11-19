@@ -53,10 +53,17 @@ export type BossAttackId =
   | 'canopy_leak';
 
 /** Boss 认梗弹反的专属舞台演出：答题前先演一段看得懂的招式。 */
-export type BossSpecialId = 'radish_stamping' | 'auto_signing' | 'road_sign_drag' | 'canopy_rain';
+export type BossSpecialId =
+  | 'radish_stamping'
+  | 'auto_signing'
+  | 'road_sign_drag'
+  | 'link_hook'
+  | 'canopy_rain';
 
 export interface BossPhase {
   phase: number;
+  /** 双血条 Boss 使用：该阶段属于第几管血，缺省为第一管。 */
+  bar?: 1 | 2;
   fromHpPct: number;
   attackIntervalMs: number;
   parryQuestionId: string;
@@ -64,6 +71,8 @@ export interface BossPhase {
   staggerMs: number;
   label: string;
   special?: BossSpecialId;
+  /** 弹反成功时的反伤，缺省沿用 BOSS.reflectDamage。 */
+  reflectDamage?: number;
 }
 
 export interface BossConfig {
@@ -100,6 +109,7 @@ export interface RunState {
   /** 荒野岛的亡命天涯门与这是好事呀门。 */
   act2Door1Passed: boolean;
   act2Door2Passed: boolean;
+  act2BridgeCheckpoint?: boolean;
   startedAt: number;
   stats: RunStats;
 }

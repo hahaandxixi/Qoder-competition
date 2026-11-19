@@ -1,7 +1,7 @@
 {
   "name": "raccoon-rocket-unnamed-crisis",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "浣熊火箭：无名氏危机 — Phaser 3 横版认梗闯关游戏",
   "type": "module",
   "scripts": {

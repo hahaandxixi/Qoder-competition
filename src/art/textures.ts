@@ -867,6 +867,52 @@ function drawDrone(ctx: Ctx): void {
   u(ctx, 20, 4, 1, 2, paper, 2);
 }
 
+function drawMissile(ctx: Ctx): void {
+  const dark = '#171310';
+  const metal = '#4d554c';
+  const rust = '#a83a22';
+  const rustLight = '#cf6a45';
+  const paper = '#e9dfc8';
+  const warning = '#e8b23a';
+  const neon = '#4be3c8';
+
+  // 尾焰与尾翼
+  ctx.fillStyle = neon;
+  ctx.fillRect(0, 7, 8, 4);
+  ctx.fillStyle = warning;
+  ctx.fillRect(2, 8, 5, 2);
+  ctx.fillStyle = dark;
+  ctx.fillRect(4, 2, 8, 14);
+  ctx.fillStyle = metal;
+  ctx.fillRect(6, 4, 5, 10);
+  // 弹体
+  ctx.fillStyle = dark;
+  ctx.fillRect(10, 4, 28, 10);
+  ctx.fillStyle = rust;
+  ctx.fillRect(11, 5, 26, 8);
+  ctx.fillStyle = rustLight;
+  ctx.fillRect(12, 6, 22, 2);
+  ctx.fillStyle = paper;
+  ctx.fillRect(18, 5, 3, 8);
+  ctx.fillStyle = warning;
+  ctx.fillRect(30, 6, 5, 6);
+  // 弹头
+  ctx.fillStyle = dark;
+  ctx.beginPath();
+  ctx.moveTo(38, 3);
+  ctx.lineTo(47, 9);
+  ctx.lineTo(38, 15);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = warning;
+  ctx.beginPath();
+  ctx.moveTo(38, 5);
+  ctx.lineTo(44, 9);
+  ctx.lineTo(38, 13);
+  ctx.closePath();
+  ctx.fill();
+}
+
 function drawCrab(ctx: Ctx): void {
   const dark = '#171310';
   const rust = '#a83a22';
@@ -1071,6 +1117,7 @@ export function createAllTextures(scene: Phaser.Scene): void {
   makeTexture(scene, TEX.islandSky, 1280, 720, (ctx, w, h) => drawIslandSky(ctx, w, h));
   makeTexture(scene, TEX.islandMid, 1600, 420, (ctx, w, h) => drawIslandMid(ctx, w, h));
   makeTexture(scene, TEX.drone, 48, 32, (ctx) => drawDrone(ctx));
+  makeTexture(scene, TEX.missile, 48, 18, (ctx) => drawMissile(ctx));
   makeTexture(scene, TEX.gear, 24, 24, (ctx) => drawGear(ctx));
   makeTexture(scene, TEX.crab, 54, 36, (ctx) => drawCrab(ctx));
   makeTexture(scene, TEX.wastelandBoss, 45 * 4, 54 * 4, (ctx) => drawWastelandBoss(ctx));

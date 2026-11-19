@@ -73,32 +73,39 @@
     "phases": [
       {
         "phase": 1,
+        "bar": 1,
         "fromHpPct": 1,
         "attackIntervalMs": 2500,
         "parryQuestionId": "parry_wangming_act2",
         "attackPool": ["viewfinder_net", "gear_toss"],
         "staggerMs": 3000,
-        "label": "镜头跟上"
+        "label": "镜头跟上",
+        "special": "road_sign_drag",
+        "reflectDamage": 90
       },
       {
         "phase": 2,
-        "fromHpPct": 0.66,
+        "bar": 2,
+        "fromHpPct": 1,
         "attackIntervalMs": 2100,
-        "parryQuestionId": "parry_wangming_act2",
+        "parryQuestionId": "parry_xianglink_act2",
         "attackPool": ["viewfinder_net", "gear_toss"],
-        "staggerMs": 3000,
-        "label": "亡命天涯",
-        "special": "road_sign_drag"
+        "staggerMs": 4200,
+        "label": "想链接了",
+        "special": "link_hook",
+        "reflectDamage": 180
       },
       {
         "phase": 3,
-        "fromHpPct": 0.33,
+        "bar": 2,
+        "fromHpPct": 0.5,
         "attackIntervalMs": 1800,
         "parryQuestionId": "parry_haoshi_act2",
         "attackPool": ["viewfinder_net", "gear_toss", "canopy_leak"],
-        "staggerMs": 3000,
+        "staggerMs": 3600,
         "label": "这是好事呀",
-        "special": "canopy_rain"
+        "special": "canopy_rain",
+        "reflectDamage": 200
       }
     ]
   }
