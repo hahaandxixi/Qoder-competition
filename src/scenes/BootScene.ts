@@ -7,7 +7,12 @@ export class BootScene extends Phaser.Scene {
 
   create(): void {
     this.makeTextures();
-    this.scene.start('MenuScene');
+    const track = new URLSearchParams(window.location.search).get('track');
+    if (track) {
+      this.scene.start('AuditionScene', { track });
+    } else {
+      this.scene.start('MenuScene');
+    }
   }
 
   private makeTextures(): void {
