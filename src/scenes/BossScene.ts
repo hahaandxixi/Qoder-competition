@@ -21,6 +21,7 @@ import {
   halfReceipt,
   makeTape,
   pixelBurst,
+  speechBubble,
   stamp,
 } from '../art/uiKit';
 import { Player, type PlayerCallbacks } from '../entities/Player';
@@ -90,6 +91,7 @@ export class BossScene extends Phaser.Scene {
   private introUi: Phaser.GameObjects.Container | null = null;
   private introSkipHandler: (() => void) | null = null;
   private introProjection: Phaser.GameObjects.Container | null = null;
+  private retryMicPending = false;
 
   constructor() {
     super('Boss');
@@ -125,6 +127,10 @@ export class BossScene extends Phaser.Scene {
     this.introWorld = null;
     this.introUi = null;
     this.introSkipHandler = null;
+    this.retryMicPending =
+      this.registry.get('act1RetryBubblePending') === true &&
+      this.registry.get('act1RetryLineSeen') !== true;
+    this.registry.remove('act1RetryBubblePending');
 
     this.run = getRunState(this);
     this.run.act = 1;
@@ -900,10 +906,20 @@ export class BossScene extends Phaser.Scene {
     }
     this.fightStarted = true;
     this.boss.setInvulnerable(0);
-    this.nextAttackAt = this.time.now + 900;
+    const retryLine = this.retryMicPending;
+    this.retryMicPending = false;
+    this.nextAttackAt = this.time.now + (retryLine ? 2400 : 900);
     this.nextSpecialAt = this.time.now + BOSS.firstSpecialDelayMs;
-    this.hud.toast('认出梗，就能把发布会打回去。', 'neon');
-    this.time.delayedCall(650, () => {
+    if (retryLine) {
+      this.time.delayedCall(220, () => {
+        if (!this.finished) {
+          this.showRetryMicLine();
+        }
+      });
+    } else {
+      this.hud.toast('认出梗，就能把发布会打回去。', 'neon');
+    }
+    this.time.delayedCall(retryLine ? 2100 : 650, () => {
       if (this.finished || this.parryActive) {
         return;
       }
@@ -916,6 +932,56 @@ export class BossScene extends Phaser.Scene {
         duration: 320,
         onComplete: () => warning.destroy(),
       });
+    });
+  }
+
+  private showRetryMicLine(): void {
+    this.registry.set('act1RetryLineSeen', true);
+    const bubble = speechBubble(this, 750, 256, `奶娃扶正麦克风：${STRINGS.boss.retryMicLine}`, {
+      maxWidth: 540,
+      fontSize: 18,
+      color: COLORS.warning,
+      tail: 'right',
+    });
+    bubble.setDepth(96);
+    bubble.setAlpha(0);
+    this.tweens.add({ targets: bubble, alpha: 1, duration: 180, ease: 'Sine.easeOut' });
+    this.tweens.add({
+      targets: bubble,
+      alpha: 0,
+      delay: 1900,
+      duration: 300,
+      ease: 'Sine.easeIn',
+      onComplete: () => bubble.destroy(true),
+    });
+
+    const mic = this.add.container(1014, 426);
+    const g = this.add.graphics();
+    g.fillStyle(COLORS.coal, 0.9);
+    g.fillCircle(0, -18, 13);
+    g.lineStyle(5, COLORS.coal, 1);
+    g.lineBetween(0, -4, 0, 46);
+    g.fillStyle(COLORS.warning, 0.9);
+    g.fillCircle(-4, -22, 4);
+    g.lineStyle(2, COLORS.paper, 0.4);
+    g.lineBetween(-8, 34, 8, 34);
+    mic.add(g);
+    mic.setDepth(96);
+    mic.setRotation(-0.52);
+    this.tweens.add({
+      targets: mic,
+      rotation: 0.04,
+      duration: 480,
+      ease: 'Back.easeOut',
+      onComplete: () => {
+        this.tweens.add({
+          targets: mic,
+          alpha: 0,
+          delay: 1500,
+          duration: 320,
+          onComplete: () => mic.destroy(true),
+        });
+      },
     });
   }
 

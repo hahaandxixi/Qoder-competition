@@ -669,6 +669,15 @@ export class ResultScene extends Phaser.Scene {
     const run = this.registry.get('run') as RunState | undefined;
     const act = this.payload.act === 2 ? 2 : 1;
 
+    if (act === 1 && !this.payload.victory) {
+      this.registry.set('act1RetryBubblePending', true);
+    }
+    if (act === 2 && this.payload.victory) {
+      this.registry.set('act2TakeLinePending', true);
+    } else if (act === 2) {
+      this.registry.remove('act2TakeLinePending');
+    }
+
     if (act === 2) {
       if (!this.payload.victory && run?.act2Door2Passed === true) {
         audio.setMusic('boss');

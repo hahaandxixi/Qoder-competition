@@ -477,6 +477,52 @@ export function addHotTag(
   return root;
 }
 
+export interface SpeechBubbleOptions {
+  fontSize?: number;
+  maxWidth?: number;
+  color?: number;
+  tail?: 'left' | 'center' | 'right';
+}
+
+/** 短气泡：不暂停战斗，只承载一句台词。 */
+export function speechBubble(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  text: string,
+  options: SpeechBubbleOptions = {},
+): Phaser.GameObjects.Container {
+  const maxWidth = options.maxWidth ?? 460;
+  const fontSize = options.fontSize ?? 18;
+  const color = options.color ?? COLORS.warning;
+  const root = scene.add.container(x, y);
+  const label = scene.add.text(0, 0, text, {
+    fontFamily: FONTS.body,
+    fontSize: `${fontSize}px`,
+    color: CSS.paper,
+    fontStyle: 'bold',
+    align: 'center',
+    wordWrap: { width: maxWidth - 40 },
+  });
+  label.setOrigin(0.5);
+  const w = Math.min(maxWidth, label.width + 40);
+  const h = label.height + 26;
+  const g = scene.add.graphics();
+  g.fillStyle(COLORS.coal, 0.96);
+  g.fillRect(-w / 2, -h / 2, w, h);
+  g.lineStyle(2, color, 0.9);
+  g.strokeRect(-w / 2, -h / 2, w, h);
+  const tailX = options.tail === 'left' ? -w / 2 + 36 : options.tail === 'right' ? w / 2 - 36 : 0;
+  g.fillStyle(COLORS.coal, 0.96);
+  g.fillTriangle(tailX - 12, h / 2, tailX + 12, h / 2, tailX, h / 2 + 14);
+  g.lineStyle(2, color, 0.9);
+  g.lineBetween(tailX - 12, h / 2, tailX, h / 2 + 14);
+  g.lineBetween(tailX, h / 2 + 14, tailX + 12, h / 2);
+  root.add([g, label]);
+  root.setRotation(-0.008);
+  return root;
+}
+
 export function addScanlines(scene: Phaser.Scene, depth = 500): Phaser.GameObjects.Graphics {
   const g = scene.add.graphics();
   g.fillStyle(COLORS.coal, 0.05);

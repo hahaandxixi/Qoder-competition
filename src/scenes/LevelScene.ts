@@ -687,6 +687,45 @@ export class LevelScene extends Phaser.Scene {
     });
     winCode.setOrigin(0.5);
     win.add([wg, winLabel, winSub, winCode]);
+
+    const logistics = this.add.container(134, -44);
+    const lg = this.add.graphics();
+    lg.fillStyle(COLORS.coal, 0.24);
+    lg.fillRect(-57, -41, 120, 88);
+    lg.fillStyle(COLORS.paper, 0.97);
+    lg.fillRect(-60, -44, 120, 88);
+    lg.lineStyle(2, COLORS.rust, 0.85);
+    lg.strokeRect(-60, -44, 120, 88);
+    lg.fillStyle(COLORS.warning, 0.9);
+    lg.fillRect(-60, -44, 120, 8);
+    lg.fillStyle(COLORS.coal, 0.28);
+    lg.fillRect(-48, 28, 96, 1);
+    const logisticsTitle = this.add.text(0, -28, STRINGS.level.gate2LogisticsTitle, {
+      fontFamily: FONTS.mono,
+      fontSize: '9px',
+      color: CSS.rust,
+      fontStyle: 'bold',
+    });
+    logisticsTitle.setOrigin(0.5);
+    const logisticsLine1 = this.add.text(0, -4, STRINGS.level.gate2LogisticsLine1, {
+      fontFamily: FONTS.body,
+      fontSize: '10px',
+      color: CSS.coal,
+      fontStyle: 'bold',
+    });
+    logisticsLine1.setOrigin(0.5);
+    const logisticsLine2 = this.add.text(0, 16, STRINGS.level.gate2LogisticsLine2, {
+      fontFamily: FONTS.body,
+      fontSize: '12px',
+      color: CSS.rust,
+      fontStyle: 'bold',
+    });
+    logisticsLine2.setOrigin(0.5);
+    const logisticsTape = makeTape(this, 24, -48, 44, 12, COLORS.warning);
+    logisticsTape.setRotation(0.16);
+    logistics.add([lg, logisticsTitle, logisticsLine1, logisticsLine2, logisticsTape]);
+    logistics.setRotation(0.06);
+    win.add(logistics);
     this.gate2Window = win;
     this.drawGate2Paper();
 
@@ -1368,31 +1407,37 @@ export class LevelScene extends Phaser.Scene {
     this.beginGateLock();
     this.gate2Far = false;
     audio.play('bell');
-    audio.play('paper');
     this.hud.toast(STRINGS.door.windowTape, 'paper');
     const targetX = EXIT_X + 250;
-    if (this.gate2ReelA && this.gate2ReelB) {
-      this.tweens.add({ targets: [this.gate2ReelA, this.gate2ReelB], angle: '+=920', duration: 2100, ease: 'Sine.easeInOut' });
-    }
     const ticket = this.makeWorldReceipt('door_daodai', EXIT_X - 168, 500, 276, 122);
     ticket.setDepth(18);
     ticket.setAlpha(0);
     ticket.setScale(0.7);
     this.tweens.add({ targets: ticket, alpha: 1, scale: 1, duration: 300, ease: 'Back.easeOut' });
-    this.tweens.add({
-      targets: this.gate2Window,
-      x: targetX,
-      scale: 0.7,
-      duration: 2100,
-      ease: 'Sine.easeInOut',
-      onUpdate: () => this.drawGate2Paper(),
-      onComplete: () => {
-        this.gate2Far = true;
+    this.time.delayedCall(260, () => {
+      if (!this.gateAnimating || this.gate2Passed || !this.gate2Window) {
         ticket.destroy(true);
-        this.hud.toast(STRINGS.door.windowFar, 'rust');
-        this.gateAnimating = false;
-        this.openGateQuiz(2);
-      },
+        return;
+      }
+      audio.play('rewind');
+      if (this.gate2ReelA && this.gate2ReelB) {
+        this.tweens.add({ targets: [this.gate2ReelA, this.gate2ReelB], angle: '+=1400', duration: 760, ease: 'Cubic.easeIn' });
+      }
+      this.tweens.add({
+        targets: this.gate2Window,
+        x: targetX,
+        scale: 0.7,
+        duration: 780,
+        ease: 'Cubic.easeIn',
+        onUpdate: () => this.drawGate2Paper(),
+        onComplete: () => {
+          this.gate2Far = true;
+          ticket.destroy(true);
+          this.hud.toast(STRINGS.door.windowFar, 'rust');
+          this.gateAnimating = false;
+          this.openGateQuiz(2);
+        },
+      });
     });
   }
 

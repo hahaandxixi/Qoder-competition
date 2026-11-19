@@ -20,6 +20,7 @@ import {
   glitchText,
   makeTape,
   pixelBurst,
+  speechBubble,
   stamp,
 } from '../art/uiKit';
 import { Player, type PlayerCallbacks } from '../entities/Player';
@@ -82,6 +83,7 @@ export class WastelandBossScene extends Phaser.Scene {
   private introWorld: Phaser.GameObjects.Container | null = null;
   private introUi: Phaser.GameObjects.Container | null = null;
   private introSkipHandler: (() => void) | null = null;
+  private retryTakePending = false;
 
   constructor() {
     super('WastelandBoss');
@@ -119,6 +121,8 @@ export class WastelandBossScene extends Phaser.Scene {
     this.introWorld = null;
     this.introUi = null;
     this.introSkipHandler = null;
+    this.retryTakePending = this.registry.get('act2TakeLinePending') === true;
+    this.registry.remove('act2TakeLinePending');
 
     this.run = getRunState(this);
     this.run.act = 2;
@@ -711,6 +715,7 @@ export class WastelandBossScene extends Phaser.Scene {
       this.cameras.main.pan(820, 380, 760, 'Sine.easeInOut');
       audio.play('ropeTension');
     });
+    const showCardboardLine = this.registry.get('act2CardboardLineSeen') !== true;
     this.time.delayedCall(1580, () => {
       if (epoch !== this.introEpoch || !this.introActive) {
         return;
@@ -719,7 +724,7 @@ export class WastelandBossScene extends Phaser.Scene {
         targets: cardboard,
         angle: 78,
         y: 520,
-        alpha: 0,
+        alpha: showCardboardLine ? 0.82 : 0,
         duration: 620,
         ease: 'Cubic.easeIn',
       });
@@ -731,6 +736,38 @@ export class WastelandBossScene extends Phaser.Scene {
         ease: 'Back.easeOut',
       });
     });
+    if (showCardboardLine) {
+      this.time.delayedCall(2320, () => {
+        if (epoch !== this.introEpoch || !this.introActive) {
+          return;
+        }
+        this.registry.set('act2CardboardLineSeen', true);
+        const bubble = speechBubble(this, 756, 296, STRINGS.act2.bossCardboardLine, {
+          maxWidth: 520,
+          fontSize: 18,
+          color: COLORS.neon,
+          tail: 'right',
+        });
+        bubble.setDepth(420);
+        bubble.setAlpha(0);
+        this.tweens.add({ targets: bubble, alpha: 1, duration: 200, ease: 'Sine.easeOut' });
+        this.tweens.add({
+          targets: bubble,
+          alpha: 0,
+          delay: 1700,
+          duration: 300,
+          ease: 'Sine.easeIn',
+          onComplete: () => bubble.destroy(true),
+        });
+        this.tweens.add({
+          targets: cardboard,
+          alpha: 0,
+          delay: 1500,
+          duration: 400,
+          ease: 'Sine.easeIn',
+        });
+      });
+    }
     this.time.delayedCall(2280, () => {
       if (epoch !== this.introEpoch || !this.introActive) {
         return;
@@ -840,10 +877,20 @@ export class WastelandBossScene extends Phaser.Scene {
     this.fightStarted = true;
     this.parryUsedThisPhase = false;
     this.boss.setInvulnerable(0);
-    this.nextAttackAt = this.time.now + 1100;
+    const retryTake = this.retryTakePending;
+    this.retryTakePending = false;
+    this.nextAttackAt = this.time.now + (retryTake ? 2600 : 1100);
     this.nextSpecialAt = this.time.now + BOSS.firstSpecialDelayMs;
-    this.hud.toast('荒哥：镜头跟上，这段一次过。', 'neon');
-    this.time.delayedCall(650, () => {
+    if (retryTake) {
+      this.time.delayedCall(260, () => {
+        if (!this.finished && this.fightStarted) {
+          this.showRetryTakeLine();
+        }
+      });
+    } else {
+      this.hud.toast('荒哥：镜头跟上，这段一次过。', 'neon');
+    }
+    this.time.delayedCall(retryTake ? 2300 : 650, () => {
       if (this.finished || !this.fightStarted) {
         return;
       }
@@ -856,6 +903,57 @@ export class WastelandBossScene extends Phaser.Scene {
         duration: 320,
         onComplete: () => warning.destroy(),
       });
+    });
+  }
+
+  private showRetryTakeLine(): void {
+    const bubble = speechBubble(this, 744, 250, STRINGS.act2.bossRetryTakeLine, {
+      maxWidth: 560,
+      fontSize: 18,
+      color: COLORS.warning,
+      tail: 'right',
+    });
+    bubble.setDepth(96);
+    bubble.setAlpha(0);
+    this.tweens.add({ targets: bubble, alpha: 1, duration: 180, ease: 'Sine.easeOut' });
+    this.tweens.add({
+      targets: bubble,
+      alpha: 0,
+      delay: 2000,
+      duration: 320,
+      ease: 'Sine.easeIn',
+      onComplete: () => bubble.destroy(true),
+    });
+
+    const camera = this.add.container(1016, 404);
+    const g = this.add.graphics();
+    g.fillStyle(COLORS.coal, 0.95);
+    g.fillRect(-18, -14, 36, 28);
+    g.lineStyle(2, COLORS.warning, 0.9);
+    g.strokeRect(-18, -14, 36, 28);
+    g.fillStyle(COLORS.paper, 0.85);
+    g.fillRect(-12, -8, 14, 10);
+    g.fillStyle(COLORS.neon, 0.9);
+    g.fillCircle(10, -3, 4);
+    g.fillStyle(COLORS.coal, 0.95);
+    g.fillRect(-5, 14, 10, 32);
+    camera.add(g);
+    camera.setDepth(96);
+    camera.setRotation(-0.34);
+    this.tweens.add({
+      targets: camera,
+      rotation: 0.03,
+      duration: 460,
+      ease: 'Back.easeOut',
+      onComplete: () => {
+        this.tweens.add({
+          targets: camera,
+          alpha: 0,
+          delay: 1700,
+          duration: 320,
+          onComplete: () => camera.destroy(true),
+        });
+      },
     });
   }
 
