@@ -31,6 +31,12 @@ interface TrackDef {
   padDur?: number;
   tensionPad?: number[];
   tensionStab?: { step: number; midis: number[] };
+  bars?: BarPattern[];
+}
+
+interface BarPattern {
+  bass: BassNote[];
+  stabs: StabNote[];
 }
 
 const NOTE_FREQ = (midi: number): number => 440 * Math.pow(2, (midi - 69) / 12);
@@ -107,32 +113,79 @@ const TRACKS: Record<TrackName, TrackDef> = {
     tensionPad: [38, 44],
     tensionStab: { step: 15, midis: [62, 65, 68] },
   },
-  // 名字归还：口琴式主音的胜利短曲
+  // 归名雷鬼：76BPM 一提鼓 + 反拍切分，D–Bm–G–A 四小节 Jam
   victory: {
-    bpm: 116,
-    kick: [0, 8],
-    snare: [4, 12],
-    hat: [0, 2, 4, 6, 8, 10, 12, 14],
-    bass: [
-      { step: 0, midi: 48, dur: 0.3 },
-      { step: 4, midi: 48, dur: 0.2 },
-      { step: 6, midi: 53, dur: 0.2 },
-      { step: 8, midi: 55, dur: 0.3 },
-      { step: 12, midi: 48, dur: 0.2 },
-    ],
-    stabs: [
-      { step: 0, midis: [64, 67, 72], dur: 0.2 },
-      { step: 8, midis: [65, 69, 72], dur: 0.2 },
+    bpm: 76,
+    kick: [8],
+    snare: [8],
+    hat: [2, 6, 10, 14],
+    bass: [],
+    stabs: [],
+    bars: [
+      {
+        bass: [
+          { step: 0, midi: 38, dur: 0.5 },
+          { step: 6, midi: 50, dur: 0.25 },
+          { step: 10, midi: 45, dur: 0.35 },
+          { step: 14, midi: 43, dur: 0.2 },
+        ],
+        stabs: [
+          { step: 2, midis: [62, 66, 69], dur: 0.12 },
+          { step: 6, midis: [62, 66, 69], dur: 0.12 },
+          { step: 10, midis: [62, 66, 69], dur: 0.12 },
+          { step: 14, midis: [62, 66, 69], dur: 0.12 },
+        ],
+      },
+      {
+        bass: [
+          { step: 0, midi: 35, dur: 0.5 },
+          { step: 6, midi: 47, dur: 0.25 },
+          { step: 10, midi: 42, dur: 0.35 },
+          { step: 14, midi: 40, dur: 0.2 },
+        ],
+        stabs: [
+          { step: 2, midis: [59, 62, 66], dur: 0.12 },
+          { step: 6, midis: [59, 62, 66], dur: 0.12 },
+          { step: 10, midis: [59, 62, 66], dur: 0.12 },
+          { step: 14, midis: [59, 62, 66], dur: 0.12 },
+        ],
+      },
+      {
+        bass: [
+          { step: 0, midi: 31, dur: 0.5 },
+          { step: 6, midi: 43, dur: 0.25 },
+          { step: 10, midi: 38, dur: 0.35 },
+          { step: 14, midi: 40, dur: 0.2 },
+        ],
+        stabs: [
+          { step: 2, midis: [55, 59, 62], dur: 0.12 },
+          { step: 6, midis: [55, 59, 62], dur: 0.12 },
+          { step: 10, midis: [55, 59, 62], dur: 0.12 },
+          { step: 14, midis: [55, 59, 62], dur: 0.12 },
+        ],
+      },
+      {
+        bass: [
+          { step: 0, midi: 33, dur: 0.5 },
+          { step: 6, midi: 45, dur: 0.25 },
+          { step: 10, midi: 40, dur: 0.35 },
+          { step: 14, midi: 43, dur: 0.2 },
+        ],
+        stabs: [
+          { step: 2, midis: [57, 61, 64], dur: 0.12 },
+          { step: 6, midis: [57, 61, 64], dur: 0.12 },
+          { step: 10, midis: [57, 61, 64], dur: 0.12 },
+          { step: 14, midis: [57, 61, 64], dur: 0.12 },
+        ],
+      },
     ],
     lead: [
-      { step: 0, midi: 76, dur: 0.22 },
-      { step: 2, midi: 79, dur: 0.22 },
-      { step: 4, midi: 84, dur: 0.4 },
-      { step: 7, midi: 83, dur: 0.15 },
-      { step: 8, midi: 81, dur: 0.22 },
-      { step: 10, midi: 79, dur: 0.22 },
-      { step: 12, midi: 76, dur: 0.3 },
-      { step: 14, midi: 74, dur: 0.15 },
+      { step: 2, midi: 78, dur: 0.18 },
+      { step: 5, midi: 81, dur: 0.25 },
+      { step: 7, midi: 78, dur: 0.12 },
+      { step: 10, midi: 76, dur: 0.22 },
+      { step: 13, midi: 74, dur: 0.25 },
+      { step: 15, midi: 73, dur: 0.12 },
     ],
   },
 };
@@ -146,6 +199,7 @@ class MusicManager {
 
   private trackName: TrackName | null = null;
   private step = 0;
+  private loopSteps = 16;
   private nextTime = 0;
   private schedulerId: number | null = null;
   private tension = false;
@@ -189,6 +243,7 @@ class MusicManager {
     if (this.trackName === name) return;
     this.trackName = name;
     this.step = 0;
+    this.loopSteps = 16 * (TRACKS[name].bars?.length ?? 1);
     this.nextTime = this.ctx.currentTime + 0.06;
     this.musicBus?.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.05);
     this.musicBus?.gain.setTargetAtTime(this.ducked ? 0.35 : 1, this.ctx.currentTime + 0.2, 0.12);
@@ -240,6 +295,42 @@ class MusicManager {
     });
   }
 
+  // 口琴式胜利乐句，衔接雷鬼 Jam
+  fanfare(): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.master) return;
+    const t0 = ctx.currentTime + 0.02;
+    const notes: [number, number][] = [
+      [74, 0],
+      [78, 0.32],
+      [81, 0.64],
+      [81, 0.98],
+    ];
+    notes.forEach(([midi, off], i) => {
+      const t = t0 + off;
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      const lfo = ctx.createOscillator();
+      const lfoGain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(NOTE_FREQ(midi), t);
+      lfo.type = 'sine';
+      lfo.frequency.setValueAtTime(5.5, t);
+      lfoGain.gain.setValueAtTime(7, t);
+      lfo.connect(lfoGain).connect(osc.frequency);
+      const dur = i === notes.length - 1 ? 0.9 : 0.26;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.2, t + 0.03);
+      g.gain.setValueAtTime(0.18, t + dur * 0.7);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      osc.connect(g).connect(this.master!);
+      osc.start(t);
+      lfo.start(t);
+      osc.stop(t + dur + 0.05);
+      lfo.stop(t + dur + 0.05);
+    });
+  }
+
   get heartbeatActive(): boolean {
     return this.hbInterval !== null;
   }
@@ -250,6 +341,10 @@ class MusicManager {
 
   get isMuted(): boolean {
     return this.muted;
+  }
+
+  get current(): TrackName | null {
+    return this.trackName;
   }
 
   // 受击后持续 5 秒的心跳背景音
@@ -315,36 +410,42 @@ class MusicManager {
     while (this.nextTime < ctx.currentTime + 0.15) {
       this.playStep(track, this.step, this.nextTime);
       this.nextTime += stepDur;
-      this.step = (this.step + 1) % 16;
+      this.step = (this.step + 1) % this.loopSteps;
     }
   }
 
-  private playStep(track: TrackDef, step: number, t: number): void {
-    if (track.kick.includes(step)) this.kick(t);
-    if (track.snare.includes(step)) this.snare(t);
-    if (track.hat.includes(step)) this.hat(t);
-    for (const b of track.bass) {
-      if (b.step === step) this.bass(t, NOTE_FREQ(b.midi), b.dur);
+  private playStep(track: TrackDef, absStep: number, t: number): void {
+    const bar = Math.floor(absStep / 16);
+    const s = absStep % 16;
+    const barPat = track.bars ? track.bars[bar % track.bars.length] : null;
+
+    if (track.kick.includes(s)) this.kick(t);
+    if (track.snare.includes(s)) this.snare(t);
+    if (track.hat.includes(s)) this.hat(t);
+    const bassNotes = barPat ? barPat.bass : track.bass;
+    for (const b of bassNotes) {
+      if (b.step === s) this.bass(t, NOTE_FREQ(b.midi), b.dur);
     }
-    for (const s of track.stabs) {
-      if (s.step === step) this.stab(t, s.midis.map(NOTE_FREQ), s.dur, s.gain ?? 1);
+    const stabNotes = barPat ? barPat.stabs : track.stabs;
+    for (const st of stabNotes) {
+      if (st.step === s) this.stab(t, st.midis.map(NOTE_FREQ), st.dur, st.gain ?? 1);
     }
     if (track.lead) {
       for (const n of track.lead) {
-        if (n.step === step) this.lead(t, NOTE_FREQ(n.midi), n.dur);
+        if (n.step === s) this.lead(t, NOTE_FREQ(n.midi), n.dur);
       }
     }
-    if (step === 0 && track.padMidis && track.padDur) {
+    if (s === 0 && track.padMidis && track.padDur) {
       this.pad(t, track.padMidis.map(NOTE_FREQ), track.padDur, 0.035);
     }
     if (this.tension) {
-      if (step === 0 && track.tensionPad) {
+      if (s === 0 && track.tensionPad) {
         this.pad(t, track.tensionPad.map(NOTE_FREQ), track.padDur ?? 2.2, 0.05);
       }
-      if (track.tensionStab && track.tensionStab.step === step) {
+      if (track.tensionStab && track.tensionStab.step === s) {
         this.stab(t, track.tensionStab.midis.map(NOTE_FREQ), 0.5, 0.7);
       }
-      if (step === 3 || step === 11) this.kickSub(t);
+      if (s === 3 || s === 11) this.kickSub(t);
     }
   }
 

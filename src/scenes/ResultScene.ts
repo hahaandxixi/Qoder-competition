@@ -14,7 +14,8 @@ export class ResultScene extends Phaser.Scene {
     if (win) {
       music.setDuck(false);
       music.setTension(false);
-      music.play('victory');
+      music.fanfare();
+      this.time.delayedCall(1600, () => music.play('victory'));
     } else {
       music.stop();
     }
