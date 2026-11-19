@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import type { CardKind } from '../types';
+import { music } from '../systems/MusicManager';
 
 interface Keys {
   A: Phaser.Input.Keyboard.Key;
@@ -121,6 +122,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       yoyo: true,
       repeat: 4,
     });
+    music.heartbeat(5000);
   }
 
   applyCard(kind: CardKind): void {

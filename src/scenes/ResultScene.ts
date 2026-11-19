@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { music } from '../systems/MusicManager';
 
 const FONT = '"Microsoft YaHei", system-ui, sans-serif';
 
@@ -10,6 +11,13 @@ export class ResultScene extends Phaser.Scene {
   create(data: { win?: boolean }): void {
     const win = !!data?.win;
     this.cameras.main.setBackgroundColor(win ? 0x0d1a12 : 0x1a0d0d);
+    if (win) {
+      music.setDuck(false);
+      music.setTension(false);
+      music.play('victory');
+    } else {
+      music.stop();
+    }
 
     this.add
       .text(480, 190, win ? '通关！梗力全开' : '你被无名氏拿捏了', {

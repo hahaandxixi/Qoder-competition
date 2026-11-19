@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { Player } from '../objects/Player';
 import type { Question, QuizData } from '../types';
 import questionsData from '../data/questions.json';
+import { music } from '../systems/MusicManager';
 
 const FONT = '"Microsoft YaHei", system-ui, sans-serif';
 
@@ -34,6 +35,9 @@ export class LevelScene extends Phaser.Scene {
     this.gates = [];
     this.solvedCount = 0;
     this.gatePool = (questionsData as unknown as Question[]).filter((q) => q.type === 'gate');
+    music.setDuck(false);
+    music.setTension(false);
+    music.play('level');
 
     const worldW = 3600;
     this.physics.world.setBounds(0, 0, worldW, 600);
@@ -200,12 +204,14 @@ export class LevelScene extends Phaser.Scene {
   private openGateQuiz(gate: GateState): void {
     if (this.gatePool.length === 0) return;
     const q = Phaser.Utils.Array.GetRandom(this.gatePool);
+    music.setDuck(true);
     const data: QuizData = {
       mode: 'gate',
       question: q,
       onDone: (ok: boolean) => {
         this.scene.resume();
         this.input.keyboard?.resetKeys();
+        music.setDuck(false);
         if (ok) {
           gate.solved = true;
           gate.sprite.destroy();
@@ -256,9 +262,11 @@ export class LevelScene extends Phaser.Scene {
       this.player.hp = Math.max(0, this.player.hp - 20);
       this.player.respawnAt(cx + 40, 380);
       this.cameras.main.flash(200, 120, 30, 30);
+      music.heartbeat(5000);
     }
 
     this.updateHud();
+    music.setTension(this.player.hp <= 30);
 
     let nearGate: GateState | null = null;
     for (const g of this.gates) {

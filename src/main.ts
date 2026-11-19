@@ -5,6 +5,7 @@ import { LevelScene } from './scenes/LevelScene';
 import { BossScene } from './scenes/BossScene';
 import { QuizScene } from './scenes/QuizScene';
 import { ResultScene } from './scenes/ResultScene';
+import { music } from './systems/MusicManager';
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,
@@ -25,3 +26,4 @@ const game = new Phaser.Game({
 });
 
 (window as unknown as { __game: Phaser.Game }).__game = game;
+(window as unknown as { __music: typeof music }).__music = music;

@@ -26,6 +26,7 @@
 | 构建 | Vite + TypeScript |
 | 形态 | 纯静态网页（无后端），部署 Qoder Sites public |
 | 数据 | 本地 JSON 题库/卡池 + localStorage 进度 |
+| 音频 | WebAudio 实时合成原创配乐（无音频文件）+ 受击 5 秒心跳音 |
 
 ## 本地运行
 

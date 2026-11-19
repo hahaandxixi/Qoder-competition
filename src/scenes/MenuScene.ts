@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { music } from '../systems/MusicManager';
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -40,6 +41,8 @@ export class MenuScene extends Phaser.Scene {
       '答对 = 硬直反噬 + 获得梗卡；答错 = 吃伤害',
       '',
       '名字门：靠近按 E，四选一认出梗即可开锁',
+      '',
+      'B 键 静音 / 开启音乐',
     ];
     this.add
       .text(480, 280, lines.join('\n'), {
@@ -60,6 +63,14 @@ export class MenuScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    this.input.keyboard?.once('keydown-ENTER', () => this.scene.start('LevelScene'));
+    this.input.once('pointerdown', () => {
+      music.init();
+      music.play('menu');
+    });
+
+    this.input.keyboard?.once('keydown-ENTER', () => {
+      music.init();
+      this.scene.start('LevelScene');
+    });
   }
 }

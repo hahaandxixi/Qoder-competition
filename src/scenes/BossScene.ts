@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { Player } from '../objects/Player';
 import type { Question, QuizData } from '../types';
 import questionsData from '../data/questions.json';
+import { music } from '../systems/MusicManager';
 
 const FONT = '"Microsoft YaHei", system-ui, sans-serif';
 
@@ -33,6 +34,9 @@ export class BossScene extends Phaser.Scene {
     this.quizOpen = false;
     this.finishing = false;
     this.parryPool = (questionsData as unknown as Question[]).filter((q) => q.type === 'parry');
+    music.setDuck(false);
+    music.setTension(false);
+    music.play('boss');
 
     this.physics.world.setBounds(0, 0, 960, 600);
     this.cameras.main.setBounds(0, 0, 960, 540);
@@ -165,6 +169,7 @@ export class BossScene extends Phaser.Scene {
 
   private startParry(q: Question): void {
     this.quizOpen = true;
+    music.setDuck(true);
     const data: QuizData = {
       mode: 'parry',
       question: q,
@@ -172,6 +177,7 @@ export class BossScene extends Phaser.Scene {
       onDone: (ok: boolean) => {
         this.scene.resume();
         this.input.keyboard?.resetKeys();
+        music.setDuck(false);
         this.quizOpen = false;
         if (ok) this.onParrySuccess(q);
         else this.bossDash();
@@ -185,6 +191,7 @@ export class BossScene extends Phaser.Scene {
     this.staggered = true;
     this.boss.setTint(0x8ef0b0);
     this.player.applyCard(q.card);
+    music.stinger();
     this.cameras.main.flash(160, 80, 160, 100);
     this.cameras.main.shake(180, 0.006);
     const t = this.add
@@ -240,6 +247,7 @@ export class BossScene extends Phaser.Scene {
     this.hpBar.setFillStyle(ratio > 0.5 ? 0x63d68b : ratio > 0.25 ? 0xffd166 : 0xd9534f);
     this.hpText.setText(`${this.player.hp} / ${this.player.maxHp}`);
     this.bossBar.setScale(Math.max(0, this.bossHp / this.bossMaxHp), 1);
+    music.setTension(this.player.hp <= 30);
 
     if (!this.finishing && this.player.hp <= 0) {
       this.finishing = true;
