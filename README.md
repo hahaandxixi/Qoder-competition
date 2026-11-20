@@ -27,6 +27,12 @@ npm run preview  # 预览 dist/
 
 生产预览如需使用浏览器验收句柄，在地址后加 `?debug=1`；正常游玩地址不会暴露该句柄。
 
+第一幕地面碰撞回归（先构建并在另一终端启动 `npm run preview -- --port 5201`）：
+
+```bash
+npm run test:act1-floor -- http://127.0.0.1:5201/
+```
+
 第一幕公开试玩：<https://raccoon-rocket-ajj0fzwid68.qoder.zone>
 
 ## 从首页怎么玩到两个 Boss
