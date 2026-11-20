@@ -71,6 +71,13 @@ export class BootScene extends Phaser.Scene {
     });
 
     this.cameras.main.fadeIn(160, 23, 19, 16);
-    this.time.delayedCall(520, () => this.scene.start('Menu'));
+    const track = new URLSearchParams(window.location.search).get('track');
+    this.time.delayedCall(520, () => {
+      if (track) {
+        this.scene.start('Audition', { track });
+      } else {
+        this.scene.start('Menu');
+      }
+    });
   }
 }

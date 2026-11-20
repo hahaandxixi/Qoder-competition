@@ -58,7 +58,7 @@ export class ResultScene extends Phaser.Scene {
   create(): void {
     this.cleanups.forEach((cleanup) => cleanup());
     this.cleanups = [];
-    audio.setMusic('result');
+    audio.setResult(this.payload.victory);
     audio.play(this.payload.victory ? 'victory' : 'defeat');
 
     if (this.shouldRecord) {

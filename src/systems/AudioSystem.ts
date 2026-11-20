@@ -27,26 +27,195 @@ interface ExtendedWindow extends Window {
   webkitAudioContext?: AudioContextCtor;
 }
 
-const MELODIES: Record<Exclude<MusicMode, 'none'>, { tempo: number; bass: number[]; lead: number[] }> = {
+type TrackName = 'menu' | 'level' | 'boss' | 'victory';
+
+interface BassNote {
+  step: number;
+  midi: number;
+  dur: number;
+}
+
+interface StabNote {
+  step: number;
+  midis: number[];
+  dur: number;
+  gain?: number;
+}
+
+interface LeadNote {
+  step: number;
+  midi: number;
+  dur: number;
+}
+
+interface BarPattern {
+  bass: BassNote[];
+  stabs: StabNote[];
+}
+
+interface TrackDef {
+  bpm: number;
+  kick: number[];
+  snare: number[];
+  hat: number[];
+  bass: BassNote[];
+  stabs: StabNote[];
+  lead?: LeadNote[];
+  padMidis?: number[];
+  padDur?: number;
+  tensionPad?: number[];
+  tensionStab?: { step: number; midis: number[] };
+  bars?: BarPattern[];
+}
+
+const NOTE_FREQ = (midi: number): number => 440 * Math.pow(2, (midi - 69) / 12);
+
+const TRACKS: Record<TrackName, TrackDef> = {
+  // 冷雨废土：稀疏、压抑的氛围铺垫
   menu: {
-    tempo: 0.34,
-    bass: [0, 0, 7, 0, 5, 5, 3, 0],
-    lead: [12, 15, 19, 15, 17, 14, 12, 7],
+    bpm: 72,
+    kick: [],
+    snare: [],
+    hat: [0, 4, 8, 12],
+    bass: [{ step: 0, midi: 45, dur: 2.2 }],
+    stabs: [],
+    lead: [
+      { step: 4, midi: 76, dur: 1.0 },
+      { step: 12, midi: 72, dur: 1.4 },
+    ],
+    padMidis: [45, 52, 55, 60, 64],
+    padDur: 2.4,
   },
+  // 紫电走廊：100BPM 小调 Funk-Rock，持续推进的压迫律动
   level: {
-    tempo: 0.3,
-    bass: [0, 0, 7, 0, 5, 5, 3, 7],
-    lead: [12, 14, 16, 14, 12, 10, 7, 10],
+    bpm: 100,
+    kick: [0, 6, 8, 14],
+    snare: [4, 12],
+    hat: [0, 2, 3, 4, 6, 7, 8, 10, 11, 12, 14, 15],
+    bass: [
+      { step: 0, midi: 45, dur: 0.22 },
+      { step: 2, midi: 45, dur: 0.14 },
+      { step: 3, midi: 48, dur: 0.12 },
+      { step: 4, midi: 43, dur: 0.2 },
+      { step: 6, midi: 45, dur: 0.2 },
+      { step: 8, midi: 50, dur: 0.14 },
+      { step: 10, midi: 48, dur: 0.16 },
+      { step: 12, midi: 43, dur: 0.2 },
+      { step: 14, midi: 40, dur: 0.14 },
+      { step: 15, midi: 43, dur: 0.12 },
+    ],
+    stabs: [
+      { step: 2, midis: [57, 60, 64, 67], dur: 0.13 },
+      { step: 7, midis: [57, 60, 64, 67], dur: 0.1 },
+      { step: 9, midis: [53, 57, 60, 64], dur: 0.12 },
+      { step: 13, midis: [57, 60, 64, 67], dur: 0.1 },
+    ],
+    padMidis: [45, 57, 60, 64],
+    padDur: 2.2,
+    tensionPad: [45, 51],
+    tensionStab: { step: 15, midis: [57, 60, 63] },
   },
+  // 发布会暴走：132BPM 小调，音墙推进
   boss: {
-    tempo: 0.235,
-    bass: [0, 0, 1, 0, 3, 3, 1, 0],
-    lead: [12, 13, 12, 8, 15, 13, 12, 7],
+    bpm: 132,
+    kick: [0, 4, 8, 12],
+    snare: [4, 12],
+    hat: [0, 2, 3, 4, 6, 7, 8, 10, 11, 12, 14, 15],
+    bass: [
+      { step: 0, midi: 38, dur: 0.18 },
+      { step: 2, midi: 38, dur: 0.12 },
+      { step: 3, midi: 41, dur: 0.12 },
+      { step: 6, midi: 38, dur: 0.16 },
+      { step: 8, midi: 36, dur: 0.16 },
+      { step: 10, midi: 38, dur: 0.12 },
+      { step: 12, midi: 45, dur: 0.14 },
+      { step: 14, midi: 41, dur: 0.12 },
+      { step: 15, midi: 38, dur: 0.12 },
+    ],
+    stabs: [
+      { step: 0, midis: [62, 65, 69], dur: 0.1, gain: 1.2 },
+      { step: 3, midis: [62, 65, 69], dur: 0.08 },
+      { step: 8, midis: [62, 65, 69], dur: 0.1, gain: 1.2 },
+      { step: 11, midis: [60, 64, 67], dur: 0.08 },
+      { step: 14, midis: [62, 65, 69], dur: 0.08 },
+    ],
+    tensionPad: [38, 44],
+    tensionStab: { step: 15, midis: [62, 65, 68] },
   },
-  result: {
-    tempo: 0.48,
-    bass: [0, 0, 5, 5, 7, 7, 3, 3],
-    lead: [12, 7, 12, 10, 8, 7, 3, 7],
+  // 归名雷鬼：76BPM 一提鼓 + 反拍切分，D–Bm–G–A 四小节 Jam
+  victory: {
+    bpm: 76,
+    kick: [8],
+    snare: [8],
+    hat: [2, 6, 10, 14],
+    bass: [],
+    stabs: [],
+    bars: [
+      {
+        bass: [
+          { step: 0, midi: 38, dur: 0.5 },
+          { step: 6, midi: 50, dur: 0.25 },
+          { step: 10, midi: 45, dur: 0.35 },
+          { step: 14, midi: 43, dur: 0.2 },
+        ],
+        stabs: [
+          { step: 2, midis: [62, 66, 69], dur: 0.12 },
+          { step: 6, midis: [62, 66, 69], dur: 0.12 },
+          { step: 10, midis: [62, 66, 69], dur: 0.12 },
+          { step: 14, midis: [62, 66, 69], dur: 0.12 },
+        ],
+      },
+      {
+        bass: [
+          { step: 0, midi: 35, dur: 0.5 },
+          { step: 6, midi: 47, dur: 0.25 },
+          { step: 10, midi: 42, dur: 0.35 },
+          { step: 14, midi: 40, dur: 0.2 },
+        ],
+        stabs: [
+          { step: 2, midis: [59, 62, 66], dur: 0.12 },
+          { step: 6, midis: [59, 62, 66], dur: 0.12 },
+          { step: 10, midis: [59, 62, 66], dur: 0.12 },
+          { step: 14, midis: [59, 62, 66], dur: 0.12 },
+        ],
+      },
+      {
+        bass: [
+          { step: 0, midi: 31, dur: 0.5 },
+          { step: 6, midi: 43, dur: 0.25 },
+          { step: 10, midi: 38, dur: 0.35 },
+          { step: 14, midi: 40, dur: 0.2 },
+        ],
+        stabs: [
+          { step: 2, midis: [55, 59, 62], dur: 0.12 },
+          { step: 6, midis: [55, 59, 62], dur: 0.12 },
+          { step: 10, midis: [55, 59, 62], dur: 0.12 },
+          { step: 14, midis: [55, 59, 62], dur: 0.12 },
+        ],
+      },
+      {
+        bass: [
+          { step: 0, midi: 33, dur: 0.5 },
+          { step: 6, midi: 45, dur: 0.25 },
+          { step: 10, midi: 40, dur: 0.35 },
+          { step: 14, midi: 43, dur: 0.2 },
+        ],
+        stabs: [
+          { step: 2, midis: [57, 61, 64], dur: 0.12 },
+          { step: 6, midis: [57, 61, 64], dur: 0.12 },
+          { step: 10, midis: [57, 61, 64], dur: 0.12 },
+          { step: 14, midis: [57, 61, 64], dur: 0.12 },
+        ],
+      },
+    ],
+    lead: [
+      { step: 2, midi: 78, dur: 0.18 },
+      { step: 5, midi: 81, dur: 0.25 },
+      { step: 7, midi: 78, dur: 0.12 },
+      { step: 10, midi: 76, dur: 0.22 },
+      { step: 13, midi: 74, dur: 0.25 },
+      { step: 15, midi: 73, dur: 0.12 },
+    ],
   },
 };
 
@@ -54,11 +223,22 @@ class AudioSystem {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private musicGain: GainNode | null = null;
+  private noiseBuffer: AudioBuffer | null = null;
   private timer: number | null = null;
   private nextNoteTime = 0;
   private step = 0;
+  private loopSteps = 16;
   private mode: MusicMode = 'menu';
+  private trackName: TrackName | null = null;
   private muted = false;
+  private tension = false;
+  private ducked = false;
+  private hbInterval: number | null = null;
+  private hbEndTimer: number | null = null;
+  private resultTimer: number | null = null;
+
+  private static readonly MUSIC_VOLUME = 0.5;
+  private static readonly DUCK_VOLUME = 0.2;
 
   init(muted: boolean): void {
     this.muted = muted;
@@ -76,7 +256,7 @@ class AudioSystem {
         this.master.gain.value = this.muted ? 0 : 0.34;
         this.master.connect(this.ctx.destination);
         this.musicGain = this.ctx.createGain();
-        this.musicGain.gain.value = 0.2;
+        this.musicGain.gain.value = AudioSystem.MUSIC_VOLUME;
         this.musicGain.connect(this.master);
       }
       if (this.ctx.state === 'suspended') {
@@ -103,17 +283,60 @@ class AudioSystem {
     }
   }
 
+  getCtxState(): string {
+    return this.ctx ? this.ctx.state : 'none';
+  }
+
+  getCurrentTrack(): TrackName | null {
+    return this.trackName;
+  }
+
+  isHeartbeatActive(): boolean {
+    return this.hbInterval !== null;
+  }
+
   setMusic(mode: MusicMode): void {
     if (this.mode === mode) {
       return;
     }
     this.mode = mode;
-    this.step = 0;
-    this.nextNoteTime = 0;
-    if (mode === 'none') {
-      this.stopScheduler();
+    if (mode === 'none' || mode === 'result') {
+      this.stopTrack();
     } else {
-      this.startScheduler();
+      this.playTrack(mode);
+    }
+  }
+
+  // 胜利：口琴式 fanfare 后衔接雷鬼 Jam；失败：静默
+  setResult(win: boolean): void {
+    this.mode = 'result';
+    this.stopTrack();
+    if (!win) {
+      return;
+    }
+    this.fanfare();
+    this.resultTimer = window.setTimeout(() => {
+      this.resultTimer = null;
+      this.playTrack('victory');
+    }, 1600);
+  }
+
+  setTension(on: boolean): void {
+    this.tension = on;
+  }
+
+  setDuck(on: boolean): void {
+    this.ducked = on;
+    if (this.ctx && this.musicGain) {
+      try {
+        this.musicGain.gain.setTargetAtTime(
+          on ? AudioSystem.DUCK_VOLUME : AudioSystem.MUSIC_VOLUME,
+          this.ctx.currentTime,
+          0.08,
+        );
+      } catch {
+        // Ignore.
+      }
     }
   }
 
@@ -125,6 +348,9 @@ class AudioSystem {
       return;
     }
     const now = this.ctx.currentTime;
+    if (name === 'hurt') {
+      this.heartbeat(5000);
+    }
     switch (name) {
       case 'jump':
         this.tone(now, 360, 0.1, 'square', 0.07, 560);
@@ -201,6 +427,104 @@ class AudioSystem {
     }
   }
 
+  // 口琴式胜利乐句，衔接雷鬼 Jam
+  fanfare(): void {
+    const ctx = this.ctx;
+    const master = this.master;
+    if (!ctx || !master) {
+      return;
+    }
+    const t0 = ctx.currentTime + 0.02;
+    const notes: [number, number][] = [
+      [74, 0],
+      [78, 0.32],
+      [81, 0.64],
+      [81, 0.98],
+    ];
+    notes.forEach(([midi, off], i) => {
+      const t = t0 + off;
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      const lfo = ctx.createOscillator();
+      const lfoGain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(NOTE_FREQ(midi), t);
+      lfo.type = 'sine';
+      lfo.frequency.setValueAtTime(5.5, t);
+      lfoGain.gain.setValueAtTime(7, t);
+      lfo.connect(lfoGain);
+      lfoGain.connect(osc.frequency);
+      const dur = i === notes.length - 1 ? 0.9 : 0.26;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.2, t + 0.03);
+      g.gain.setValueAtTime(0.18, t + dur * 0.7);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      osc.connect(g);
+      g.connect(master);
+      osc.start(t);
+      lfo.start(t);
+      osc.stop(t + dur + 0.05);
+      lfo.stop(t + dur + 0.05);
+    });
+  }
+
+  // 受击后持续 5 秒的心跳背景音
+  heartbeat(durationMs = 5000): void {
+    const ctx = this.ctx;
+    const master = this.master;
+    if (!ctx || !master || ctx.state !== 'running') {
+      return;
+    }
+    this.clearHeartbeat();
+    const thumpPair = (): void => {
+      const t = ctx.currentTime + 0.02;
+      this.thump(t, 0.7);
+      this.thump(t + 0.18, 0.45);
+    };
+    thumpPair();
+    this.hbInterval = window.setInterval(thumpPair, 900);
+    this.hbEndTimer = window.setTimeout(() => {
+      this.clearHeartbeat();
+    }, durationMs);
+    this.setDuck(true);
+    window.setTimeout(() => {
+      if (!this.hbInterval) {
+        this.setDuck(false);
+      }
+    }, durationMs + 30);
+  }
+
+  private clearHeartbeat(): void {
+    if (this.hbInterval !== null) {
+      window.clearInterval(this.hbInterval);
+      this.hbInterval = null;
+    }
+    if (this.hbEndTimer !== null) {
+      window.clearTimeout(this.hbEndTimer);
+      this.hbEndTimer = null;
+    }
+  }
+
+  private thump(t: number, vol: number): void {
+    const ctx = this.ctx;
+    const master = this.master;
+    if (!ctx || !master) {
+      return;
+    }
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(58, t);
+    osc.frequency.exponentialRampToValueAtTime(38, t + 0.16);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+    osc.connect(g);
+    g.connect(master);
+    osc.start(t);
+    osc.stop(t + 0.3);
+  }
+
   private tone(
     start: number,
     from: number,
@@ -263,13 +587,12 @@ class AudioSystem {
   }
 
   private startScheduler(): void {
-    if (!this.ctx || this.timer !== null || this.mode === 'none') {
+    if (!this.ctx || this.timer !== null || !this.trackName) {
       return;
     }
     try {
       this.nextNoteTime = this.ctx.currentTime + 0.1;
-      this.step = 0;
-      this.timer = window.setInterval(() => this.scheduleMusic(), 420);
+      this.timer = window.setInterval(() => this.scheduleMusic(), 30);
       this.scheduleMusic();
     } catch {
       this.timer = null;
@@ -283,62 +606,278 @@ class AudioSystem {
     }
   }
 
-  private scheduleMusic(): void {
-    if (!this.ctx || !this.musicGain || this.mode === 'none') {
-      return;
+  private clearResultTimer(): void {
+    if (this.resultTimer !== null) {
+      window.clearTimeout(this.resultTimer);
+      this.resultTimer = null;
     }
-    if (this.ctx.state !== 'running') {
+  }
+
+  private playTrack(name: TrackName): void {
+    if (name !== 'victory') {
+      this.clearResultTimer();
+    }
+    this.trackName = name;
+    this.step = 0;
+    this.loopSteps = 16 * (TRACKS[name].bars?.length ?? 1);
+    if (this.ctx) {
+      this.nextNoteTime = this.ctx.currentTime + 0.06;
+      if (this.musicGain) {
+        this.musicGain.gain.setTargetAtTime(
+          this.ducked ? AudioSystem.DUCK_VOLUME : AudioSystem.MUSIC_VOLUME,
+          this.ctx.currentTime,
+          0.06,
+        );
+      }
+      this.startScheduler();
+    }
+  }
+
+  private stopTrack(): void {
+    this.clearResultTimer();
+    this.stopScheduler();
+    this.trackName = null;
+    if (this.ctx && this.musicGain) {
+      try {
+        this.musicGain.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.1);
+      } catch {
+        // Ignore.
+      }
+    }
+  }
+
+  private scheduleMusic(): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.trackName || ctx.state !== 'running') {
       return;
     }
     try {
-      const tune = MELODIES[this.mode];
-      const horizon = this.ctx.currentTime + 0.9;
-      let guard = 0;
-      while (this.nextNoteTime < horizon && guard < 8) {
-        const index = this.step % tune.bass.length;
-        const bassNote = tune.bass[index] ?? 0;
-        const leadNote = tune.lead[index] ?? 0;
-        if (index % 2 === 0 || this.mode === 'boss') {
-          this.musicTone(this.nextNoteTime, this.midi(40 + bassNote), 0.11, 'triangle', 0.05);
-        }
-        this.musicTone(this.nextNoteTime + 0.02, this.midi(72 + leadNote), 0.07, 'square', 0.022);
-        if (this.mode === 'boss' && index % 4 === 2) {
-          this.noise(this.nextNoteTime, 0.05, 0.012);
-        }
-        this.nextNoteTime += tune.tempo;
-        this.step += 1;
-        guard += 1;
+      const track = TRACKS[this.trackName];
+      const stepDur = 60 / track.bpm / 4;
+      while (this.nextNoteTime < ctx.currentTime + 0.15) {
+        this.playStep(track, this.step, this.nextNoteTime);
+        this.nextNoteTime += stepDur;
+        this.step = (this.step + 1) % this.loopSteps;
       }
     } catch {
       // Ignore music scheduling issues.
     }
   }
 
-  private musicTone(
-    start: number,
-    freq: number,
-    duration: number,
-    type: OscillatorType,
-    volume: number,
-  ): void {
-    if (!this.ctx || !this.musicGain) {
-      return;
+  private playStep(track: TrackDef, absStep: number, t: number): void {
+    const bar = Math.floor(absStep / 16);
+    const s = absStep % 16;
+    const barPat = track.bars ? track.bars[bar % track.bars.length] : null;
+
+    if (track.kick.includes(s)) {
+      this.musicKick(t);
     }
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, start);
-    gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.linearRampToValueAtTime(volume, start + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
-    osc.connect(gain);
-    gain.connect(this.musicGain);
-    osc.start(start);
-    osc.stop(start + duration + 0.03);
+    if (track.snare.includes(s)) {
+      this.musicNoise(t, 0.22, 'snare');
+    }
+    if (track.hat.includes(s)) {
+      this.musicNoise(t, 0.05, 'hat');
+    }
+    const bassNotes = barPat ? barPat.bass : track.bass;
+    for (const b of bassNotes) {
+      if (b.step === s) {
+        this.musicBass(t, NOTE_FREQ(b.midi), b.dur);
+      }
+    }
+    const stabNotes = barPat ? barPat.stabs : track.stabs;
+    for (const st of stabNotes) {
+      if (st.step === s) {
+        this.musicStab(t, st.midis.map(NOTE_FREQ), st.dur, st.gain ?? 1);
+      }
+    }
+    if (track.lead) {
+      for (const n of track.lead) {
+        if (n.step === s) {
+          this.musicLead(t, NOTE_FREQ(n.midi), n.dur);
+        }
+      }
+    }
+    if (s === 0 && track.padMidis && track.padDur) {
+      this.musicPad(t, track.padMidis.map(NOTE_FREQ), track.padDur, 0.035);
+    }
+    if (this.tension) {
+      if (s === 0 && track.tensionPad) {
+        this.musicPad(t, track.tensionPad.map(NOTE_FREQ), track.padDur ?? 2.2, 0.05);
+      }
+      if (track.tensionStab && track.tensionStab.step === s) {
+        this.musicStab(t, track.tensionStab.midis.map(NOTE_FREQ), 0.5, 0.7);
+      }
+      if (s === 3 || s === 11) {
+        this.musicKickSub(t);
+      }
+    }
   }
 
-  private midi(note: number): number {
-    return 440 * Math.pow(2, (note - 69) / 12);
+  private musicKick(t: number): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.musicGain) {
+      return;
+    }
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(130, t);
+    osc.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+    g.gain.setValueAtTime(0.85, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+    osc.connect(g);
+    g.connect(this.musicGain);
+    osc.start(t);
+    osc.stop(t + 0.32);
+  }
+
+  private musicKickSub(t: number): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.musicGain) {
+      return;
+    }
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(50, t);
+    g.gain.setValueAtTime(0.4, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+    osc.connect(g);
+    g.connect(this.musicGain);
+    osc.start(t);
+    osc.stop(t + 0.24);
+  }
+
+  private musicNoise(t: number, dur: number, kind: 'snare' | 'hat'): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.musicGain) {
+      return;
+    }
+    if (!this.noiseBuffer) {
+      const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.5), ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < data.length; i += 1) {
+        data[i] = Math.random() * 2 - 1;
+      }
+      this.noiseBuffer = buf;
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = this.noiseBuffer;
+    const filter = ctx.createBiquadFilter();
+    if (kind === 'snare') {
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(1800, t);
+      filter.Q.value = 1;
+    } else {
+      filter.type = 'highpass';
+      filter.frequency.setValueAtTime(7000, t);
+    }
+    const g = ctx.createGain();
+    const vol = kind === 'snare' ? 0.3 : 0.09;
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    src.connect(filter);
+    filter.connect(g);
+    g.connect(this.musicGain);
+    src.start(t);
+    src.stop(t + dur + 0.05);
+  }
+
+  private musicBass(t: number, freq: number, dur: number): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.musicGain) {
+      return;
+    }
+    const osc = ctx.createOscillator();
+    const lp = ctx.createBiquadFilter();
+    const g = ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(freq, t);
+    lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(620, t);
+    lp.Q.value = 5;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.3, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(lp);
+    lp.connect(g);
+    g.connect(this.musicGain);
+    osc.start(t);
+    osc.stop(t + dur + 0.05);
+  }
+
+  private musicStab(t: number, freqs: number[], dur: number, gain: number): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.musicGain) {
+      return;
+    }
+    for (const freq of freqs) {
+      const osc = ctx.createOscillator();
+      const lp = ctx.createBiquadFilter();
+      const g = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(freq, t);
+      lp.type = 'lowpass';
+      lp.frequency.setValueAtTime(2400, t);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.09 * gain, t + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      osc.connect(lp);
+      lp.connect(g);
+      g.connect(this.musicGain);
+      osc.start(t);
+      osc.stop(t + dur + 0.05);
+    }
+  }
+
+  private musicPad(t: number, freqs: number[], dur: number, gain: number): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.musicGain) {
+      return;
+    }
+    for (const freq of freqs) {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, t);
+      osc.detune.setValueAtTime((Math.random() - 0.5) * 12, t);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(gain, t + 0.6);
+      g.gain.setValueAtTime(gain, t + dur * 0.7);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      osc.connect(g);
+      g.connect(this.musicGain);
+      osc.start(t);
+      osc.stop(t + dur + 0.05);
+    }
+  }
+
+  private musicLead(t: number, freq: number, dur: number): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.musicGain) {
+      return;
+    }
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    const lfo = ctx.createOscillator();
+    const lfoGain = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq, t);
+    lfo.type = 'sine';
+    lfo.frequency.setValueAtTime(5.5, t);
+    lfoGain.gain.setValueAtTime(6, t);
+    lfo.connect(lfoGain);
+    lfoGain.connect(osc.frequency);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.14, t + 0.03);
+    g.gain.setValueAtTime(0.12, t + dur * 0.7);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(g);
+    g.connect(this.musicGain);
+    osc.start(t);
+    lfo.start(t);
+    osc.stop(t + dur + 0.05);
+    lfo.stop(t + dur + 0.05);
   }
 }
 

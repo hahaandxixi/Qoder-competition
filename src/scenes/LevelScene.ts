@@ -147,6 +147,8 @@ export class LevelScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, WORLD.levelWidth, 1000);
     this.cameras.main.setBounds(0, 0, WORLD.levelWidth, GAME_HEIGHT);
     this.cameras.main.fadeIn(260, 23, 19, 16);
+    audio.setDuck(false);
+    audio.setTension(false);
     audio.setMusic('level');
 
     this.buildBackground();
@@ -190,6 +192,7 @@ export class LevelScene extends Phaser.Scene {
       }
 
       this.hud.updatePlayer(this.player.getHp(), this.player.getMaxHp());
+      audio.setTension(this.player.getHp() <= this.player.getMaxHp() * 0.3);
       this.hud.updateMeme(this.meme.getValue(), this.meme.isBurstActive(), this.meme.getStreak());
       this.cards.update(delta);
       this.hud.updateActiveEffects(this.cards.getActiveEffects());
