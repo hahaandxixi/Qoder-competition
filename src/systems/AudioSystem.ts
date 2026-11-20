@@ -27,7 +27,14 @@ interface ExtendedWindow extends Window {
   webkitAudioContext?: AudioContextCtor;
 }
 
-type TrackName = 'menu' | 'level' | 'boss' | 'victory';
+export const TRACK_NAMES = ['menu', 'level', 'boss', 'victory'] as const;
+export type TrackName = (typeof TRACK_NAMES)[number];
+
+export function isTrackName(value: string | null | undefined): value is TrackName {
+  return value === 'menu' || value === 'level' || value === 'boss' || value === 'victory';
+}
+
+type DuckSource = 'quiz' | 'heartbeat';
 
 interface BassNote {
   step: number;
@@ -228,11 +235,12 @@ class AudioSystem {
   private nextNoteTime = 0;
   private step = 0;
   private loopSteps = 16;
-  private mode: MusicMode = 'menu';
+  private mode: MusicMode = 'none';
   private trackName: TrackName | null = null;
   private muted = false;
   private tension = false;
   private ducked = false;
+  private readonly duckSources = new Set<DuckSource>();
   private hbInterval: number | null = null;
   private hbEndTimer: number | null = null;
   private resultTimer: number | null = null;
@@ -283,20 +291,12 @@ class AudioSystem {
     }
   }
 
-  getCtxState(): string {
-    return this.ctx ? this.ctx.state : 'none';
-  }
-
-  getCurrentTrack(): TrackName | null {
-    return this.trackName;
-  }
-
   isHeartbeatActive(): boolean {
     return this.hbInterval !== null;
   }
 
   setMusic(mode: MusicMode): void {
-    if (this.mode === mode) {
+    if (this.mode === mode && (mode === 'none' || mode === 'result' || this.trackName !== null)) {
       return;
     }
     this.mode = mode;
@@ -307,8 +307,9 @@ class AudioSystem {
     }
   }
 
-  // 胜利：口琴式 fanfare 后衔接雷鬼 Jam；失败：静默
+  // 胜利：口琴式 fanfare 后衔接雷鬼 Jam；失败：不播胜利音乐，保留原有失败音效
   setResult(win: boolean): void {
+    this.resetSceneMix();
     this.mode = 'result';
     this.stopTrack();
     if (!win) {
@@ -325,18 +326,39 @@ class AudioSystem {
     this.tension = on;
   }
 
-  setDuck(on: boolean): void {
-    this.ducked = on;
-    if (this.ctx && this.musicGain) {
-      try {
-        this.musicGain.gain.setTargetAtTime(
-          on ? AudioSystem.DUCK_VOLUME : AudioSystem.MUSIC_VOLUME,
-          this.ctx.currentTime,
-          0.08,
-        );
-      } catch {
-        // Ignore.
-      }
+  resetSceneMix(): void {
+    this.clearHeartbeat();
+    this.duckSources.clear();
+    this.applyDuck();
+    this.tension = false;
+  }
+
+  setDuck(on: boolean, source: DuckSource = 'quiz'): void {
+    if (on) {
+      this.duckSources.add(source);
+    } else {
+      this.duckSources.delete(source);
+    }
+    this.applyDuck();
+  }
+
+  private applyDuck(): void {
+    const ducked = this.duckSources.size > 0;
+    if (ducked === this.ducked) {
+      return;
+    }
+    this.ducked = ducked;
+    if (!this.ctx || !this.musicGain) {
+      return;
+    }
+    try {
+      this.musicGain.gain.setTargetAtTime(
+        ducked ? AudioSystem.DUCK_VOLUME : AudioSystem.MUSIC_VOLUME,
+        this.ctx.currentTime,
+        0.08,
+      );
+    } catch {
+      // Ignore.
     }
   }
 
@@ -472,7 +494,7 @@ class AudioSystem {
   heartbeat(durationMs = 5000): void {
     const ctx = this.ctx;
     const master = this.master;
-    if (!ctx || !master || ctx.state !== 'running') {
+    if (!ctx || !master || this.muted || ctx.state !== 'running') {
       return;
     }
     this.clearHeartbeat();
@@ -483,15 +505,10 @@ class AudioSystem {
     };
     thumpPair();
     this.hbInterval = window.setInterval(thumpPair, 900);
+    this.setDuck(true, 'heartbeat');
     this.hbEndTimer = window.setTimeout(() => {
       this.clearHeartbeat();
     }, durationMs);
-    this.setDuck(true);
-    window.setTimeout(() => {
-      if (!this.hbInterval) {
-        this.setDuck(false);
-      }
-    }, durationMs + 30);
   }
 
   private clearHeartbeat(): void {
@@ -503,6 +520,7 @@ class AudioSystem {
       window.clearTimeout(this.hbEndTimer);
       this.hbEndTimer = null;
     }
+    this.setDuck(false, 'heartbeat');
   }
 
   private thump(t: number, vol: number): void {
@@ -654,10 +672,16 @@ class AudioSystem {
     try {
       const track = TRACKS[this.trackName];
       const stepDur = 60 / track.bpm / 4;
-      while (this.nextNoteTime < ctx.currentTime + 0.15) {
+      // 后台标签页会积压过期步进；先归位，再限制单次补帧数量。
+      if (this.nextNoteTime < ctx.currentTime - stepDur) {
+        this.nextNoteTime = ctx.currentTime + 0.05;
+      }
+      let guard = 0;
+      while (this.nextNoteTime < ctx.currentTime + 0.15 && guard < 8) {
         this.playStep(track, this.step, this.nextNoteTime);
         this.nextNoteTime += stepDur;
         this.step = (this.step + 1) % this.loopSteps;
+        guard += 1;
       }
     } catch {
       // Ignore music scheduling issues.

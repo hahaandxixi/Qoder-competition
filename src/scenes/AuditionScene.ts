@@ -1,8 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH } from '../config/balance';
-import { audio } from '../systems/AudioSystem';
-
-type AuditionTrack = 'menu' | 'level' | 'boss' | 'victory';
+import { audio, isTrackName, type TrackName } from '../systems/AudioSystem';
 
 interface AuditionItem {
   key: number;
@@ -13,7 +11,7 @@ interface AuditionItem {
 const FONT = 'system-ui, "Microsoft YaHei", sans-serif';
 
 export class AuditionScene extends Phaser.Scene {
-  private startTrack: AuditionTrack = 'victory';
+  private startTrack: TrackName = 'victory';
   private currentText!: Phaser.GameObjects.Text;
   private started = false;
   private items: AuditionItem[] = [];
@@ -23,9 +21,8 @@ export class AuditionScene extends Phaser.Scene {
   }
 
   init(data: { track?: string } | undefined): void {
-    const t = data?.track;
-    if (t === 'menu' || t === 'level' || t === 'boss' || t === 'victory') {
-      this.startTrack = t;
+    if (isTrackName(data?.track)) {
+      this.startTrack = data.track;
     }
   }
 
@@ -118,7 +115,7 @@ export class AuditionScene extends Phaser.Scene {
     this.currentText.setText('正在播放：' + item.label);
   }
 
-  private trackLabel(track: AuditionTrack): string {
+  private trackLabel(track: TrackName): string {
     switch (track) {
       case 'menu':
         return '菜单氛围《冷雨废土》';

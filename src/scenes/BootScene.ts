@@ -3,7 +3,7 @@ import { createAllTextures } from '../art/textures';
 import { glitchText, makeTape } from '../art/uiKit';
 import { COLORS, CSS, FONTS } from '../config/theme';
 import { STRINGS } from '../data';
-import { audio } from '../systems/AudioSystem';
+import { audio, isTrackName } from '../systems/AudioSystem';
 import { SaveSystem } from '../systems/SaveSystem';
 
 export class BootScene extends Phaser.Scene {
@@ -13,7 +13,9 @@ export class BootScene extends Phaser.Scene {
 
   create(): void {
     audio.init(SaveSystem.getMuted());
-    audio.setMusic('menu');
+    const requestedTrack = new URLSearchParams(window.location.search).get('track');
+    const auditionTrack = isTrackName(requestedTrack) ? requestedTrack : null;
+    audio.setMusic(auditionTrack ? 'none' : 'menu');
     createAllTextures(this);
     this.cameras.main.setBackgroundColor(COLORS.coal);
 
@@ -71,10 +73,9 @@ export class BootScene extends Phaser.Scene {
     });
 
     this.cameras.main.fadeIn(160, 23, 19, 16);
-    const track = new URLSearchParams(window.location.search).get('track');
     this.time.delayedCall(520, () => {
-      if (track) {
-        this.scene.start('Audition', { track });
+      if (auditionTrack) {
+        this.scene.start('Audition', { track: auditionTrack });
       } else {
         this.scene.start('Menu');
       }

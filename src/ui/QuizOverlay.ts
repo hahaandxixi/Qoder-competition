@@ -57,7 +57,7 @@ export class QuizOverlay {
     }
 
     this.bindKeyboard();
-    audio.setDuck(true);
+    audio.setDuck(true, 'quiz');
     this.scene.tweens.add({ targets: this.root, alpha: 1, duration: 130, ease: 'Sine.easeOut' });
     scene.events.once('shutdown', () => this.cleanupOnly());
     this.updateTimer(this.config.windowMs);
@@ -624,6 +624,6 @@ export class QuizOverlay {
   private cleanupOnly(): void {
     this.keyboardCleanup.forEach((cleanup) => cleanup());
     this.keyboardCleanup.length = 0;
-    audio.setDuck(false);
+    audio.setDuck(false, 'quiz');
   }
 }
