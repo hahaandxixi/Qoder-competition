@@ -1,10 +1,10 @@
 [
   {
     "id": "boss_zhen",
-    "name": "甄领先",
-    "title": "遥遥集团 · 首席发布官",
+    "name": "灭霸",
+    "title": "大厦顶层 · 奶娃主持人",
     "hp": 900,
-    "intro": "欢迎来到年度发布会。今天只发布一件事：你的失败。",
+    "intro": "欢迎来到发布会。凡是会滴的东西，都是手机。",
     "defeatLine": "名字……还你。发布会……改线上。",
     "taunts": [
       "遥遥领先！",
@@ -18,28 +18,94 @@
         "phase": 1,
         "fromHpPct": 1.0,
         "attackIntervalMs": 2250,
-        "parryQuestionId": "parry_yaoyao",
-        "attackPool": ["aimed_shots", "dash_combo"],
+        "parryQuestionId": "parry_leihun",
+        "attackPool": [
+          "aimed_shots",
+          "dash_combo"
+        ],
         "staggerMs": 3200,
-        "label": "常规发布 · 遥遥领先"
+        "label": "常规发布 · 又是类魂",
+        "special": "radish_stamping"
       },
       {
         "phase": 2,
         "fromHpPct": 0.66,
         "attackIntervalMs": 1850,
-        "parryQuestionId": "parry_dashui",
-        "attackPool": ["data_rain", "aimed_shots", "dash_combo"],
+        "parryQuestionId": "parry_daiqian",
+        "attackPool": [
+          "data_rain",
+          "aimed_shots",
+          "dash_combo"
+        ],
         "staggerMs": 3200,
-        "label": "数据灌水 · 跑分风暴"
+        "label": "全自动签收 · 代签人是谁",
+        "special": "auto_signing"
       },
       {
         "phase": 3,
         "fromHpPct": 0.33,
         "attackIntervalMs": 1500,
         "parryQuestionId": "parry_bangbang",
-        "attackPool": ["red_carpet_dash", "data_rain", "aimed_shots"],
+        "attackPool": [
+          "red_carpet_dash",
+          "data_rain",
+          "aimed_shots"
+        ],
         "staggerMs": 3200,
         "label": "红毯收网 · 终极发布"
+      }
+    ]
+  },
+  {
+    "id": "boss_huang",
+    "name": "荒哥",
+    "title": "荒野岛 · 意外事故主持人",
+    "hp": 720,
+    "intro": "意外不是事故，是节目效果。",
+    "defeatLine": "本期拍摄完毕。设备……先别拍设备。",
+    "taunts": [
+      "镜头跟上，这就是节目效果！",
+      "别怕，意外才有播放量。",
+      "这一段剪掉，就当没发生。",
+      "风越大，故事越大。",
+      "设备还在，人就没输。"
+    ],
+    "phases": [
+      {
+        "phase": 1,
+        "bar": 1,
+        "fromHpPct": 1,
+        "attackIntervalMs": 2500,
+        "parryQuestionId": "parry_wangming_act2",
+        "attackPool": ["viewfinder_net", "gear_toss"],
+        "staggerMs": 3000,
+        "label": "镜头跟上",
+        "special": "road_sign_drag",
+        "reflectDamage": 90
+      },
+      {
+        "phase": 2,
+        "bar": 2,
+        "fromHpPct": 1,
+        "attackIntervalMs": 2100,
+        "parryQuestionId": "parry_xianglink_act2",
+        "attackPool": ["viewfinder_net", "gear_toss"],
+        "staggerMs": 4200,
+        "label": "想链接了",
+        "special": "link_hook",
+        "reflectDamage": 180
+      },
+      {
+        "phase": 3,
+        "bar": 2,
+        "fromHpPct": 0.5,
+        "attackIntervalMs": 1800,
+        "parryQuestionId": "parry_haoshi_act2",
+        "attackPool": ["viewfinder_net", "gear_toss", "canopy_leak"],
+        "staggerMs": 3600,
+        "label": "这是好事呀",
+        "special": "canopy_rain",
+        "reflectDamage": 200
       }
     ]
   }

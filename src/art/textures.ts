@@ -228,82 +228,139 @@ function drawLobster(ctx: Ctx): void {
 
 function drawBoss(ctx: Ctx): void {
   const dark = '#14110f';
-  const suit = '#2a2723';
-  const suitLight = '#3c3831';
-  const paper = '#d9cdb3';
+  const ink = '#2a2723';
+  const paper = '#e9dfc8';
+  const paperShade = '#cdbfa2';
+  const paperDeep = '#a99878';
   const rust = '#a83a22';
+  const rustDark = '#6e2516';
   const warning = '#e8b23a';
   const neon = '#4be3c8';
+  const body = '#7447b8';
+  const bodyLight = '#a97be0';
+  const bodyShade = '#4e2f82';
+  const bodyDeep = '#2f1c52';
+  const cheek = '#d77ac8';
 
   // ground shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.fillStyle = 'rgba(0,0,0,0.38)';
   ctx.beginPath();
-  ctx.ellipse(22.5 * 4, 51 * 4, 17 * 4, 2.5 * 4, 0, 0, Math.PI * 2);
+  ctx.ellipse(22.5 * 4, 50.5 * 4, 17 * 4, 3 * 4, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // legs
-  u(ctx, 14, 39, 6, 10, suit, 4);
-  u(ctx, 25, 39, 6, 10, suit, 4);
-  u(ctx, 12, 47, 9, 4, dark, 4);
-  u(ctx, 24, 47, 9, 4, dark, 4);
+  // paper-roll ahoge, behind the head
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = dark;
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.moveTo(22 * 4, 8 * 4);
+  ctx.quadraticCurveTo(20 * 4, 2 * 4, 26 * 4, 2 * 4);
+  ctx.quadraticCurveTo(33 * 4, 2 * 4, 31 * 4, 7 * 4);
+  ctx.stroke();
+  ctx.strokeStyle = paper;
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(22 * 4, 8 * 4);
+  ctx.quadraticCurveTo(20 * 4, 2 * 4, 26 * 4, 2 * 4);
+  ctx.quadraticCurveTo(33 * 4, 2 * 4, 31 * 4, 7 * 4);
+  ctx.stroke();
+  u(ctx, 20, 5, 2, 4, paperShade, 4);
+  u(ctx, 29, 3, 1, 3, paperShade, 4);
 
-  // torso
-  u(ctx, 11, 21, 23, 20, suit, 4);
-  u(ctx, 10, 24, 4, 12, suitLight, 4);
-  u(ctx, 31, 24, 4, 12, suitLight, 4);
-  u(ctx, 19, 22, 8, 13, paper, 4);
-  u(ctx, 21, 22, 4, 9, rust, 4);
-  u(ctx, 22, 31, 2, 5, rust, 4);
-  u(ctx, 13, 23, 4, 2, warning, 4);
+  // short purple legs and paper boots
+  u(ctx, 15, 39, 6, 9, body, 4);
+  u(ctx, 15, 39, 1, 9, bodyShade, 4);
+  u(ctx, 25, 39, 6, 9, body, 4);
+  u(ctx, 25, 39, 1, 9, bodyShade, 4);
+  u(ctx, 12, 47, 10, 4, dark, 4);
+  u(ctx, 24, 47, 10, 4, dark, 4);
+  u(ctx, 13, 47, 7, 1, paperDeep, 4);
+  u(ctx, 25, 47, 7, 1, paperDeep, 4);
 
-  // hovering arms
-  u(ctx, 5, 23, 5, 13, suit, 4);
-  u(ctx, 4, 33, 6, 4, paper, 4);
-  u(ctx, 35, 23, 5, 12, suit, 4);
-  u(ctx, 35, 32, 6, 4, paper, 4);
-  u(ctx, 37, 30, 4, 1, dark, 4);
-  u(ctx, 38, 31, 1, 3, neon, 4);
+  // purple onesie body
+  u(ctx, 14, 23, 18, 19, dark, 4);
+  u(ctx, 15, 24, 16, 17, body, 4);
+  u(ctx, 15, 24, 2, 17, bodyShade, 4);
+  u(ctx, 29, 24, 2, 17, bodyShade, 4);
+  u(ctx, 17, 24, 12, 2, bodyLight, 4);
+  u(ctx, 17, 38, 13, 2, rustDark, 4);
+  u(ctx, 22, 36, 2, 3, rust, 4);
 
-  // TV head
-  u(ctx, 10, 4, 25, 18, dark, 4);
-  u(ctx, 12, 6, 21, 14, '#0f1a17', 4);
-  u(ctx, 13, 7, 19, 12, '#18312c', 4);
+  // delivery-label bib
+  u(ctx, 16, 24, 14, 10, dark, 4);
+  u(ctx, 17, 25, 12, 8, '#f3ead7', 4);
+  u(ctx, 17, 25, 12, 2, warning, 4);
+  u(ctx, 18, 28, 8, 1, paperDeep, 4);
+  u(ctx, 18, 30, 5, 1, paperDeep, 4);
+  u(ctx, 26, 29, 2, 4, dark, 4);
+  u(ctx, 17, 33, 10, 1, dark, 4);
+  u(ctx, 17, 26, 1, 1, rust, 4);
 
-  // screen static
-  const bars = [1, 0.4, 0.8, 0.2, 0.65, 1, 0.5, 0.9];
-  bars.forEach((alpha, i) => {
-    ctx.fillStyle = `rgba(75,227,200,${alpha * 0.22})`;
-    ctx.fillRect(13 * 4, (7 + i * 1.5) * 4, 19 * 4, 2);
-  });
+  // giant sealing stamp hugged in front, wider than the head
+  u(ctx, 7, 31, 31, 18, dark, 4);
+  u(ctx, 9, 32, 27, 15, rustDark, 4);
+  u(ctx, 10, 33, 25, 2, rust, 4);
+  u(ctx, 10, 45, 25, 1, '#3a1710', 4);
+  u(ctx, 12, 36, 21, 8, '#7d2a1a', 4);
+  u(ctx, 14, 37, 17, 6, '#5c1e13', 4);
+  u(ctx, 16, 38, 13, 1, paperDeep, 4);
+  u(ctx, 16, 40, 13, 1, paperDeep, 4);
+  u(ctx, 22, 37, 1, 6, rust, 4);
+  u(ctx, 19, 36, 2, 2, warning, 4);
+  u(ctx, 29, 45, 3, 2, warning, 4);
+  u(ctx, 7, 33, 2, 2, paperDeep, 4);
+  u(ctx, 36, 33, 2, 2, paperDeep, 4);
 
-  // screen face: two eye bars + flat mouth
-  u(ctx, 15, 10, 5, 2, neon, 4);
-  u(ctx, 25, 10, 5, 2, neon, 4);
-  u(ctx, 15, 14, 15, 1, paper, 4);
-  u(ctx, 18, 15, 2, 1, paper, 4);
-  u(ctx, 21, 15, 2, 1, paper, 4);
-  u(ctx, 24, 15, 2, 1, paper, 4);
+  // purple arms and hands gripping the stamp edges
+  u(ctx, 11, 28, 5, 10, body, 4);
+  u(ctx, 11, 28, 1, 10, bodyShade, 4);
+  u(ctx, 31, 28, 5, 10, body, 4);
+  u(ctx, 35, 28, 1, 10, bodyShade, 4);
+  u(ctx, 8, 35, 4, 4, bodyLight, 4);
+  u(ctx, 36, 35, 4, 4, bodyLight, 4);
+  u(ctx, 8, 38, 1, 1, rust, 4);
+  u(ctx, 39, 38, 1, 1, rust, 4);
 
-  // crack
-  u(ctx, 26, 7, 1, 4, '#e9dfc8', 4);
-  u(ctx, 27, 10, 2, 1, '#e9dfc8', 4);
-  u(ctx, 28, 11, 1, 3, paper, 4);
-  u(ctx, 29, 13, 2, 1, paper, 4);
+  // oversized purple baby head
+  u(ctx, 9, 4, 26, 21, dark, 4);
+  u(ctx, 10, 5, 24, 19, body, 4);
+  u(ctx, 10, 5, 24, 2, bodyLight, 4);
+  u(ctx, 10, 22, 24, 2, bodyShade, 4);
+  u(ctx, 31, 7, 3, 10, bodyShade, 4);
 
-  // antenna
-  u(ctx, 32, 1, 1, 4, dark, 4);
-  u(ctx, 30, 0, 4, 1, dark, 4);
-  u(ctx, 33, 0, 1, 1, warning, 4);
+  // printer scar and bolts
+  u(ctx, 11, 17, 4, 1, paperDeep, 4);
+  u(ctx, 30, 18, 3, 2, ink, 4);
+  u(ctx, 30, 18, 1, 1, warning, 4);
 
-  // side "camera" shoulders
-  u(ctx, 7, 18, 3, 6, dark, 4);
-  u(ctx, 34, 18, 3, 6, dark, 4);
-  u(ctx, 8, 19, 1, 2, rust, 4);
-  u(ctx, 35, 19, 1, 2, rust, 4);
+  // brows, eyes, cheeks
+  u(ctx, 14, 11, 6, 1, bodyDeep, 4);
+  u(ctx, 26, 11, 6, 1, bodyDeep, 4);
+  u(ctx, 14, 13, 6, 5, dark, 4);
+  u(ctx, 26, 13, 6, 5, dark, 4);
+  u(ctx, 15, 14, 4, 3, '#f7f1e4', 4);
+  u(ctx, 27, 14, 4, 3, '#f7f1e4', 4);
+  u(ctx, 17, 14, 2, 3, dark, 4);
+  u(ctx, 29, 14, 2, 3, dark, 4);
+  u(ctx, 17, 14, 1, 1, neon, 4);
+  u(ctx, 29, 14, 1, 1, neon, 4);
+  u(ctx, 13, 18, 3, 1, cheek, 4);
+  u(ctx, 30, 18, 3, 1, cheek, 4);
 
-  // badge
-  u(ctx, 28, 26, 3, 2, warning, 4);
-  u(ctx, 29, 28, 2, 1, paper, 4);
+  // solemn little mouth
+  u(ctx, 20, 20, 5, 1, ink, 4);
+  u(ctx, 21, 21, 3, 1, bodyShade, 4);
+
+  // paper feed slot behind one ear
+  u(ctx, 34, 9, 3, 5, ink, 4);
+  u(ctx, 35, 10, 1, 3, dark, 4);
+  u(ctx, 34, 9, 3, 1, warning, 4);
+
+  // loose label hanging at the side
+  u(ctx, 31, 24, 5, 3, paper, 4);
+  u(ctx, 32, 25, 1, 1, dark, 4);
+  u(ctx, 34, 25, 1, 1, dark, 4);
 }
 
 function drawBossGlitch(ctx: Ctx): void {
@@ -609,6 +666,433 @@ function drawStageBg(ctx: Ctx, w: number, h: number): void {
   }
 }
 
+function drawIslandSky(ctx: Ctx, w: number, h: number): void {
+  const gradient = ctx.createLinearGradient(0, 0, 0, h);
+  gradient.addColorStop(0, '#9aa79c');
+  gradient.addColorStop(0.45, '#c1bfa7');
+  gradient.addColorStop(0.72, '#8d9b91');
+  gradient.addColorStop(1, '#3d514c');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, w, h);
+
+  // 被雾压低的逆光日轮
+  ctx.fillStyle = 'rgba(243,216,139,0.42)';
+  ctx.beginPath();
+  ctx.arc(1000, 172, 92, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(233,223,200,0.18)';
+  ctx.beginPath();
+  ctx.arc(1000, 172, 132, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 海雾层
+  for (let i = 0; i < 7; i += 1) {
+    ctx.fillStyle = i % 2 === 0 ? 'rgba(233,223,200,0.09)' : 'rgba(23,19,16,0.08)';
+    ctx.fillRect(0, 245 + i * 42, w, 14 + (i % 3) * 8);
+  }
+
+  // 远处海蚀柱与断桥残影
+  ctx.fillStyle = 'rgba(30,40,37,0.38)';
+  const stacks: Array<[number, number, number, number]> = [
+    [70, 390, 74, 220],
+    [170, 430, 40, 160],
+    [1110, 380, 92, 230],
+    [1210, 425, 48, 170],
+    [580, 470, 110, 120],
+  ];
+  stacks.forEach(([x, y, sw, sh]) => {
+    ctx.fillRect(x, y, sw, sh);
+    ctx.fillRect(x - 12, y + 30, sw + 24, 16);
+  });
+  ctx.strokeStyle = 'rgba(30,40,37,0.34)';
+  ctx.lineWidth = 7;
+  ctx.beginPath();
+  ctx.moveTo(690, 450);
+  ctx.quadraticCurveTo(760, 414, 840, 454);
+  ctx.stroke();
+  ctx.lineWidth = 3;
+  for (let x = 700; x < 840; x += 28) {
+    ctx.beginPath();
+    ctx.moveTo(x, 440);
+    ctx.lineTo(x + 8, 462);
+    ctx.stroke();
+  }
+
+  // 风线
+  ctx.strokeStyle = 'rgba(233,223,200,0.16)';
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 16; i += 1) {
+    const y = 80 + i * 27;
+    ctx.beginPath();
+    ctx.moveTo(20 + (i * 53) % 320, y);
+    ctx.lineTo(220 + (i * 61) % 420, y - 4);
+    ctx.stroke();
+  }
+
+  for (let i = 0; i < 1800; i += 1) {
+    ctx.fillStyle = i % 3 === 0 ? 'rgba(255,247,228,0.08)' : 'rgba(23,19,16,0.05)';
+    ctx.fillRect(Math.random() * w, Math.random() * h, 1, 1);
+  }
+}
+
+function drawIslandMid(ctx: Ctx, w: number, h: number): void {
+  ctx.clearRect(0, 0, w, h);
+  const dark = 'rgba(25,33,29,0.72)';
+  const soft = 'rgba(25,33,29,0.38)';
+  const olive = 'rgba(87,99,76,0.55)';
+  const rust = 'rgba(168,58,34,0.52)';
+
+  // 海岸崖壁
+  ctx.fillStyle = dark;
+  ctx.beginPath();
+  ctx.moveTo(0, h);
+  ctx.lineTo(0, 230);
+  ctx.lineTo(90, 192);
+  ctx.lineTo(160, 232);
+  ctx.lineTo(238, 154);
+  ctx.lineTo(320, 208);
+  ctx.lineTo(390, 186);
+  ctx.lineTo(420, h);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = dark;
+  ctx.beginPath();
+  ctx.moveTo(w - 430, h);
+  ctx.lineTo(w - 380, 204);
+  ctx.lineTo(w - 300, 164);
+  ctx.lineTo(w - 210, 214);
+  ctx.lineTo(w - 120, 146);
+  ctx.lineTo(w, 190);
+  ctx.lineTo(w, h);
+  ctx.closePath();
+  ctx.fill();
+
+  // 破损栈桥骨架
+  ctx.fillStyle = soft;
+  ctx.fillRect(420, 294, 700, 12);
+  for (let x = 436; x < 1100; x += 58) {
+    ctx.fillRect(x, 294, 8, 126);
+    ctx.fillStyle = 'rgba(25,33,29,0.2)';
+    ctx.fillRect(x + 10, 344, 42, 4);
+    ctx.fillStyle = soft;
+  }
+  ctx.fillStyle = 'rgba(25,33,29,0.92)';
+  ctx.fillRect(690, 280, 68, 13);
+  ctx.fillRect(750, 292, 12, 22);
+
+  // 挂着的褪色防水布
+  ctx.fillStyle = olive;
+  ctx.beginPath();
+  ctx.moveTo(174, 84);
+  ctx.lineTo(398, 60);
+  ctx.lineTo(370, 148);
+  ctx.lineTo(318, 132);
+  ctx.lineTo(282, 178);
+  ctx.lineTo(232, 142);
+  ctx.lineTo(188, 166);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(233,223,200,0.32)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(174, 84);
+  ctx.quadraticCurveTo(300, 30, 398, 60);
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(23,19,16,0.5)';
+  for (let i = 0; i < 4; i += 1) {
+    ctx.beginPath();
+    ctx.moveTo(202 + i * 52, 86);
+    ctx.lineTo(228 + i * 52, 158);
+    ctx.stroke();
+  }
+
+  // 远处补给箱与树杈
+  ctx.strokeStyle = dark;
+  ctx.lineWidth = 10;
+  ctx.beginPath();
+  ctx.moveTo(1210, 286);
+  ctx.lineTo(1280, 226);
+  ctx.lineTo(1352, 250);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(168,58,34,0.62)';
+  ctx.fillRect(1292, 238, 58, 42);
+  ctx.fillStyle = 'rgba(232,178,58,0.55)';
+  ctx.fillRect(1298, 244, 46, 5);
+
+  // 风撕开的布条
+  ctx.strokeStyle = 'rgba(207,194,166,0.36)';
+  ctx.lineWidth = 5;
+  for (let i = 0; i < 8; i += 1) {
+    const x = 500 + i * 90;
+    ctx.beginPath();
+    ctx.moveTo(x, 208 + (i % 3) * 12);
+    ctx.quadraticCurveTo(x + 58, 214 + (i % 2) * 16, x + 124, 204 + (i % 4) * 9);
+    ctx.stroke();
+  }
+
+  // 海雾与近岸浪
+  ctx.fillStyle = 'rgba(233,223,200,0.08)';
+  ctx.fillRect(0, h - 64, w, 26);
+  ctx.fillStyle = 'rgba(75,227,200,0.16)';
+  for (let x = 0; x < w; x += 120) {
+    ctx.fillRect(x + 18, h - 22, 64, 3);
+    ctx.fillRect(x + 50, h - 13, 42, 2);
+  }
+
+  // 锈红标记
+  ctx.fillStyle = rust;
+  ctx.fillRect(330, 260, 12, 46);
+  ctx.fillRect(336, 276, 34, 8);
+}
+
+function drawDrone(ctx: Ctx): void {
+  const dark = '#171310';
+  const metal = '#4d554c';
+  const light = '#9aa79c';
+  const paper = '#e9dfc8';
+  const warning = '#e8b23a';
+  const neon = '#4be3c8';
+
+  // 四旋翼支架
+  u(ctx, 2, 3, 8, 2, dark, 2);
+  u(ctx, 14, 3, 8, 2, dark, 2);
+  u(ctx, 2, 12, 8, 2, dark, 2);
+  u(ctx, 14, 12, 8, 2, dark, 2);
+  u(ctx, 1, 1, 10, 1, light, 2);
+  u(ctx, 13, 1, 10, 1, light, 2);
+  u(ctx, 1, 15, 10, 1, light, 2);
+  u(ctx, 13, 15, 10, 1, light, 2);
+
+  // 机身 + 相机
+  u(ctx, 7, 6, 10, 6, dark, 2);
+  u(ctx, 8, 7, 8, 4, metal, 2);
+  u(ctx, 10, 8, 4, 4, dark, 2);
+  u(ctx, 11, 9, 2, 2, warning, 2);
+  u(ctx, 11, 9, 1, 1, paper, 2);
+  u(ctx, 16, 8, 3, 2, warning, 2);
+  u(ctx, 6, 12, 2, 2, neon, 2);
+  u(ctx, 5, 6, 2, 2, paper, 2);
+  u(ctx, 20, 4, 1, 2, paper, 2);
+}
+
+function drawMissile(ctx: Ctx): void {
+  const dark = '#171310';
+  const metal = '#4d554c';
+  const rust = '#a83a22';
+  const rustLight = '#cf6a45';
+  const paper = '#e9dfc8';
+  const warning = '#e8b23a';
+  const neon = '#4be3c8';
+
+  // 尾焰与尾翼
+  ctx.fillStyle = neon;
+  ctx.fillRect(0, 7, 8, 4);
+  ctx.fillStyle = warning;
+  ctx.fillRect(2, 8, 5, 2);
+  ctx.fillStyle = dark;
+  ctx.fillRect(4, 2, 8, 14);
+  ctx.fillStyle = metal;
+  ctx.fillRect(6, 4, 5, 10);
+  // 弹体
+  ctx.fillStyle = dark;
+  ctx.fillRect(10, 4, 28, 10);
+  ctx.fillStyle = rust;
+  ctx.fillRect(11, 5, 26, 8);
+  ctx.fillStyle = rustLight;
+  ctx.fillRect(12, 6, 22, 2);
+  ctx.fillStyle = paper;
+  ctx.fillRect(18, 5, 3, 8);
+  ctx.fillStyle = warning;
+  ctx.fillRect(30, 6, 5, 6);
+  // 弹头
+  ctx.fillStyle = dark;
+  ctx.beginPath();
+  ctx.moveTo(38, 3);
+  ctx.lineTo(47, 9);
+  ctx.lineTo(38, 15);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = warning;
+  ctx.beginPath();
+  ctx.moveTo(38, 5);
+  ctx.lineTo(44, 9);
+  ctx.lineTo(38, 13);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawCrab(ctx: Ctx): void {
+  const dark = '#171310';
+  const rust = '#a83a22';
+  const rustLight = '#cf6a45';
+  const metal = '#6d7469';
+  const paper = '#e9dfc8';
+  const warning = '#e8b23a';
+
+  // 铁皮罐盖
+  u(ctx, 4, 0, 10, 2, dark, 3);
+  u(ctx, 5, 1, 8, 2, metal, 3);
+  u(ctx, 6, 1, 3, 1, paper, 3);
+  u(ctx, 11, 1, 1, 1, warning, 3);
+
+  // 蟹壳
+  u(ctx, 3, 4, 12, 5, rust, 3);
+  u(ctx, 4, 5, 10, 2, rustLight, 3);
+  u(ctx, 2, 6, 2, 2, rust, 3);
+  u(ctx, 14, 6, 2, 2, rust, 3);
+
+  // 钳子
+  u(ctx, 0, 4, 3, 2, dark, 3);
+  u(ctx, 0, 5, 2, 2, rust, 3);
+  u(ctx, 15, 4, 3, 2, dark, 3);
+  u(ctx, 16, 5, 2, 2, rust, 3);
+
+  // 腿
+  u(ctx, 4, 9, 2, 2, dark, 3);
+  u(ctx, 8, 9, 2, 2, dark, 3);
+  u(ctx, 12, 9, 2, 2, dark, 3);
+  u(ctx, 3, 10, 3, 1, rust, 3);
+  u(ctx, 7, 10, 3, 1, rust, 3);
+  u(ctx, 11, 10, 3, 1, rust, 3);
+
+  // 眼柄
+  u(ctx, 8, 3, 1, 2, dark, 3);
+  u(ctx, 7, 2, 3, 2, paper, 3);
+  u(ctx, 8, 2, 1, 1, dark, 3);
+
+  // 罐身标签
+  u(ctx, 5, 6, 8, 2, warning, 3);
+  u(ctx, 6, 6, 1, 2, dark, 3);
+  u(ctx, 9, 6, 1, 2, dark, 3);
+}
+
+function drawGear(ctx: Ctx): void {
+  const dark = '#171310';
+  const metal = '#6d7469';
+  const light = '#9aa79c';
+  const warning = '#e8b23a';
+
+  u(ctx, 9, 1, 6, 2, dark, 2);
+  u(ctx, 10, 2, 4, 2, metal, 2);
+  u(ctx, 9, 21, 6, 2, dark, 2);
+  u(ctx, 10, 20, 4, 2, metal, 2);
+  u(ctx, 1, 9, 2, 6, dark, 2);
+  u(ctx, 2, 10, 2, 4, metal, 2);
+  u(ctx, 21, 9, 2, 6, dark, 2);
+  u(ctx, 20, 10, 2, 4, metal, 2);
+  u(ctx, 4, 4, 3, 3, dark, 2);
+  u(ctx, 17, 4, 3, 3, dark, 2);
+  u(ctx, 4, 17, 3, 3, dark, 2);
+  u(ctx, 17, 17, 3, 3, dark, 2);
+  u(ctx, 6, 5, 12, 14, dark, 2);
+  u(ctx, 7, 6, 10, 12, metal, 2);
+  u(ctx, 8, 7, 8, 2, light, 2);
+  u(ctx, 9, 10, 6, 5, dark, 2);
+  u(ctx, 10, 11, 4, 3, warning, 2);
+  u(ctx, 10, 11, 1, 1, light, 2);
+}
+
+function drawWastelandBoss(ctx: Ctx): void {
+  const dark = '#14110f';
+  const ink = '#2a2723';
+  const olive = '#4b5642';
+  const oliveLight = '#7c8562';
+  const rust = '#a83a22';
+  const rustDark = '#6e2516';
+  const paper = '#e9dfc8';
+  const paperShade = '#cdbfa2';
+  const warning = '#e8b23a';
+  const neon = '#4be3c8';
+
+  // 地面阴影
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx.beginPath();
+  ctx.ellipse(22.5 * 4, 51 * 4, 19 * 4, 3 * 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 折叠营地和背架
+  u(ctx, 4, 22, 10, 22, dark, 4);
+  u(ctx, 5, 23, 8, 20, olive, 4);
+  u(ctx, 6, 24, 2, 17, oliveLight, 4);
+  u(ctx, 9, 27, 4, 3, rust, 4);
+  u(ctx, 6, 33, 7, 3, paperShade, 4);
+  u(ctx, 3, 19, 3, 12, dark, 4);
+  u(ctx, 2, 20, 2, 9, warning, 4);
+  u(ctx, 13, 17, 3, 4, dark, 4);
+
+  // 靴子和裤腿
+  u(ctx, 15, 38, 6, 9, olive, 4);
+  u(ctx, 24, 38, 6, 9, olive, 4);
+  u(ctx, 13, 46, 10, 4, dark, 4);
+  u(ctx, 23, 46, 11, 4, dark, 4);
+  u(ctx, 14, 46, 7, 1, paperShade, 4);
+  u(ctx, 24, 46, 8, 1, paperShade, 4);
+  u(ctx, 18, 41, 1, 3, rust, 4);
+
+  // 外套与工具带
+  u(ctx, 14, 21, 18, 19, dark, 4);
+  u(ctx, 15, 22, 16, 17, olive, 4);
+  u(ctx, 15, 22, 2, 16, oliveLight, 4);
+  u(ctx, 29, 23, 2, 15, rustDark, 4);
+  u(ctx, 16, 27, 13, 2, rust, 4);
+  u(ctx, 21, 29, 3, 3, warning, 4);
+  u(ctx, 16, 35, 12, 3, dark, 4);
+  u(ctx, 18, 36, 3, 2, paperShade, 4);
+  u(ctx, 25, 36, 4, 2, paperShade, 4);
+
+  // 手臂和自拍杆
+  u(ctx, 11, 25, 5, 10, olive, 4);
+  u(ctx, 10, 34, 5, 4, dark, 4);
+  u(ctx, 30, 25, 5, 9, olive, 4);
+  u(ctx, 32, 32, 5, 4, dark, 4);
+  ctx.strokeStyle = dark;
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.moveTo(34 * 4, 31 * 4);
+  ctx.lineTo(38 * 4, 12 * 4);
+  ctx.stroke();
+  ctx.strokeStyle = paperShade;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(34 * 4, 31 * 4);
+  ctx.lineTo(38 * 4, 12 * 4);
+  ctx.stroke();
+  u(ctx, 36, 8, 6, 4, dark, 4);
+  u(ctx, 37, 9, 4, 2, paper, 4);
+  u(ctx, 39, 10, 1, 1, neon, 4);
+  u(ctx, 33, 34, 5, 3, rust, 4);
+
+  // 头、渔夫帽和护目镜
+  u(ctx, 9, 4, 26, 18, dark, 4);
+  u(ctx, 10, 5, 24, 16, paperShade, 4);
+  u(ctx, 8, 7, 28, 4, dark, 4);
+  u(ctx, 10, 8, 24, 3, olive, 4);
+  u(ctx, 14, 12, 16, 5, dark, 4);
+  u(ctx, 15, 13, 14, 2, warning, 4);
+  u(ctx, 16, 13, 4, 2, paper, 4);
+  u(ctx, 25, 13, 4, 2, paper, 4);
+  u(ctx, 13, 18, 3, 2, rust, 4);
+  u(ctx, 30, 18, 3, 2, rust, 4);
+  u(ctx, 18, 20, 9, 2, ink, 4);
+  u(ctx, 20, 21, 5, 1, paperShade, 4);
+
+  // 帽侧“ON AIR”灯
+  u(ctx, 30, 7, 4, 3, dark, 4);
+  u(ctx, 31, 8, 2, 1, rust, 4);
+  ctx.fillStyle = 'rgba(232,178,58,0.65)';
+  ctx.fillRect(31 * 4, 8 * 4, 2 * 4, 1 * 4);
+}
+
+function drawWastelandBossGlitch(ctx: Ctx): void {
+  const colors = ['#e8b23a', '#a83a22', '#e9dfc8', '#4be3c8'];
+  for (let i = 0; i < 11; i += 1) {
+    ctx.fillStyle = colors[i % colors.length] ?? '#e8b23a';
+    ctx.globalAlpha = 0.24;
+    ctx.fillRect(30 + Math.random() * 100, 20 + Math.random() * 160, 8 + Math.random() * 80, 2);
+  }
+  ctx.globalAlpha = 1;
+}
+
 function drawAvatar(ctx: Ctx, variant: number): void {
   const colors = ['#4be3c8', '#e8b23a', '#a83a22'];
   const color = colors[variant % colors.length] ?? '#4be3c8';
@@ -638,6 +1122,14 @@ export function createAllTextures(scene: Phaser.Scene): void {
   makeTexture(scene, TEX.skyFar, 1280, 720, (ctx, w, h) => drawSkyFar(ctx, w, h));
   makeTexture(scene, TEX.skyMid, 1600, 420, (ctx, w, h) => drawSkyMid(ctx, w, h));
   makeTexture(scene, TEX.stageBg, 1280, 720, (ctx, w, h) => drawStageBg(ctx, w, h));
+  makeTexture(scene, TEX.islandSky, 1280, 720, (ctx, w, h) => drawIslandSky(ctx, w, h));
+  makeTexture(scene, TEX.islandMid, 1600, 420, (ctx, w, h) => drawIslandMid(ctx, w, h));
+  makeTexture(scene, TEX.drone, 48, 32, (ctx) => drawDrone(ctx));
+  makeTexture(scene, TEX.missile, 48, 18, (ctx) => drawMissile(ctx));
+  makeTexture(scene, TEX.gear, 24, 24, (ctx) => drawGear(ctx));
+  makeTexture(scene, TEX.crab, 54, 36, (ctx) => drawCrab(ctx));
+  makeTexture(scene, TEX.wastelandBoss, 45 * 4, 54 * 4, (ctx) => drawWastelandBoss(ctx));
+  makeTexture(scene, TEX.wastelandBossGlitch, 45 * 4, 54 * 4, (ctx) => drawWastelandBossGlitch(ctx));
 
   makeTexture(scene, TEX.bullet, 18, 6, (ctx) => {
     ctx.fillStyle = '#171310';

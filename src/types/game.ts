@@ -1,5 +1,11 @@
 export type QuestionMode = 'parry' | 'door';
 
+/** 答题期间保留在画面上的小票/面单，给玩家提供梗的线索。 */
+export interface QuestionSlip {
+  title: string;
+  lines: string[];
+}
+
 export interface Question {
   id: string;
   mode: QuestionMode;
@@ -10,6 +16,10 @@ export interface Question {
   hints: string[];
   cardId: string;
   tags: string[];
+  /** 答对时盖下的印章文案（缺省用门/弹反的通用文案）。 */
+  correctStamp?: string;
+  /** 作答期间常驻的小票（面单、取件条等）。 */
+  slip?: QuestionSlip;
 }
 
 export type CardEffectId =
@@ -33,16 +43,36 @@ export interface CardDef {
   color: string;
 }
 
-export type BossAttackId = 'dash_combo' | 'aimed_shots' | 'data_rain' | 'red_carpet_dash';
+export type BossAttackId =
+  | 'dash_combo'
+  | 'aimed_shots'
+  | 'data_rain'
+  | 'red_carpet_dash'
+  | 'viewfinder_net'
+  | 'gear_toss'
+  | 'canopy_leak';
+
+/** Boss 认梗弹反的专属舞台演出：答题前先演一段看得懂的招式。 */
+export type BossSpecialId =
+  | 'radish_stamping'
+  | 'auto_signing'
+  | 'road_sign_drag'
+  | 'link_hook'
+  | 'canopy_rain';
 
 export interface BossPhase {
   phase: number;
+  /** 双血条 Boss 使用：该阶段属于第几管血，缺省为第一管。 */
+  bar?: 1 | 2;
   fromHpPct: number;
   attackIntervalMs: number;
   parryQuestionId: string;
   attackPool: BossAttackId[];
   staggerMs: number;
   label: string;
+  special?: BossSpecialId;
+  /** 弹反成功时的反伤，缺省沿用 BOSS.reflectDamage。 */
+  reflectDamage?: number;
 }
 
 export interface BossConfig {
@@ -71,20 +101,32 @@ export interface RunState {
   meme: number;
   streak: number;
   cards: string[];
-  doorPassed: boolean;
+  /** 当前幕。第一幕与第二幕的门状态、出生点和重试路由互相独立。 */
+  act: 1 | 2;
+  /** 收发室代签门与顶层倒带取件门各自独立，检查点/重试后仍生效。 */
+  door1Passed: boolean;
+  door2Passed: boolean;
+  /** 荒野岛的亡命天涯门与这是好事呀门。 */
+  act2Door1Passed: boolean;
+  act2Door2Passed: boolean;
+  act2BridgeCheckpoint?: boolean;
   startedAt: number;
   stats: RunStats;
 }
 
 export interface BestRecord {
   cleared: boolean;
+  act1Cleared: boolean;
+  act2Cleared: boolean;
   bestTimeMs: number;
   bestCorrect: number;
   runs: number;
 }
 
 export interface ResultPayload {
+  act: 1 | 2;
   victory: boolean;
+  temporary?: boolean;
   timeMs: number;
   stats: RunStats;
   cards: string[];

@@ -6,7 +6,9 @@ import type { BossConfig, CardDef, Question } from '../types/game';
 
 export const QUESTIONS = questionsJson as Question[];
 export const CARDS = cardsJson as CardDef[];
-export const BOSS_ZHEN = (bossesJson as BossConfig[])[0];
+const BOSSES = bossesJson as BossConfig[];
+export const BOSS_ZHEN = BOSSES[0];
+export const BOSS_HUANG = BOSSES[1] ?? BOSSES[0];
 export const STRINGS = stringsJson;
 
 export function getQuestion(id: string): Question {

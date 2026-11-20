@@ -13,7 +13,7 @@ import {
   WORLD,
 } from '../config/balance';
 import { COLORS, CSS, FONTS, TEX } from '../config/theme';
-import { CARDS, STRINGS, shuffle } from '../data';
+import { CARDS, STRINGS, getQuestion, shuffle } from '../data';
 import type { CardDef, ResultPayload, RunState } from '../types/game';
 import {
   addFloatingLine,
@@ -93,13 +93,24 @@ export class LevelScene extends Phaser.Scene {
   private eKey: Phaser.Input.Keyboard.Key | null = null;
   private doorVisual: Phaser.GameObjects.Container | null = null;
   private doorLight: Phaser.GameObjects.Arc | null = null;
+  private doorScreenCode: Phaser.GameObjects.Text | null = null;
+  private doorScreenHint: Phaser.GameObjects.Text | null = null;
   private doorBlock: Phaser.GameObjects.Rectangle | null = null;
   private doorCollider: Phaser.Physics.Arcade.Collider | null = null;
+  private gate2Window: Phaser.GameObjects.Container | null = null;
+  private gate2Paper: Phaser.GameObjects.Graphics | null = null;
+  private gate2ReelA: Phaser.GameObjects.Container | null = null;
+  private gate2ReelB: Phaser.GameObjects.Container | null = null;
+  private gate2Block: Phaser.GameObjects.Rectangle | null = null;
+  private gate2Collider: Phaser.Physics.Arcade.Collider | null = null;
   private rewardRoot: Phaser.GameObjects.Container | null = null;
   private rewardCleanups: Array<() => void> = [];
   private rewardOpen = false;
   private quizOpen = false;
-  private doorPassed = false;
+  private gate1Passed = false;
+  private gate2Passed = false;
+  private gate2Far = false;
+  private gateAnimating = false;
   private nearDoor = false;
   private nearExit = false;
   private respawning = false;
@@ -126,10 +137,20 @@ export class LevelScene extends Phaser.Scene {
     this.quizOverlay = null;
     this.doorVisual = null;
     this.doorLight = null;
+    this.doorScreenCode = null;
+    this.doorScreenHint = null;
     this.doorBlock = null;
     this.doorCollider = null;
+    this.gate2Window = null;
+    this.gate2Paper = null;
+    this.gate2ReelA = null;
+    this.gate2ReelB = null;
+    this.gate2Block = null;
+    this.gate2Collider = null;
     this.rewardRoot = null;
     this.rewardCleanups = [];
+    this.gateAnimating = false;
+    this.gate2Far = false;
     this.solids.length = 0;
     this.hazards.length = 0;
     this.enemies.length = 0;
@@ -137,11 +158,17 @@ export class LevelScene extends Phaser.Scene {
     this.lastRunDust = 0;
 
     this.run = getRunState(this);
+    this.run.act = 1;
     if (this.run.hp <= 0) {
       this.run.hp = PLAYER.maxHp;
     }
-    this.doorPassed = this.run.doorPassed;
-    this.spawnPoint = this.doorPassed ? { x: CHECKPOINT_X, y: 560 } : { x: 150, y: 560 };
+    this.gate1Passed = this.run.door1Passed;
+    this.gate2Passed = this.run.door2Passed;
+    this.spawnPoint = this.gate2Passed
+      ? { x: 6180, y: 560 }
+      : this.gate1Passed
+        ? { x: CHECKPOINT_X, y: 560 }
+        : { x: 150, y: 560 };
     this.pendingReason = '网络热度归零';
 
     this.physics.world.setBounds(0, 0, WORLD.levelWidth, 1000);
@@ -157,7 +184,7 @@ export class LevelScene extends Phaser.Scene {
     this.initGroups();
     this.spawnEnemies();
     this.setupCollisions();
-    this.buildDoorBlock();
+    this.buildGateBlocks();
     this.setupHud();
     this.setupTouch();
     this.setupCamera();
@@ -458,21 +485,30 @@ export class LevelScene extends Phaser.Scene {
     g.fillCircle(44, 116, 4);
     container.add(g);
 
-    const screenTitle = this.add.text(0, -112, '名字门', {
+    const screenTitle = this.add.text(0, -114, '404 收发室', {
       fontFamily: FONTS.display,
-      fontSize: '18px',
+      fontSize: '14px',
       color: CSS.paper,
       fontStyle: 'bold',
     });
     screenTitle.setOrigin(0.5);
-    const screenCode = this.add.text(0, -92, '404', {
+    const screenCode = this.add.text(0, -91, '代签人：＿＿', {
       fontFamily: FONTS.mono,
-      fontSize: '26px',
+      fontSize: '12px',
       color: CSS.coal,
       fontStyle: 'bold',
     });
     screenCode.setOrigin(0.5);
-    const lockText = this.add.text(0, 76, 'NAME GATE // LOCKED', {
+    const screenHint = this.add.text(0, -71, STRINGS.door.screenMissing, {
+      fontFamily: FONTS.mono,
+      fontSize: '7px',
+      color: CSS.rust,
+      align: 'center',
+      wordWrap: { width: 88 },
+    });
+    screenHint.setOrigin(0.5);
+    screenHint.setAlpha(0.9);
+    const lockText = this.add.text(0, 76, 'MAILROOM // SIGN HERE', {
       fontFamily: FONTS.mono,
       fontSize: '9px',
       color: CSS.paperDim,
@@ -480,11 +516,37 @@ export class LevelScene extends Phaser.Scene {
     lockText.setOrigin(0.5);
     const light = this.add.circle(44, -150, 7, COLORS.rust);
     light.setStrokeStyle(2, COLORS.coal, 1);
-    container.add([screenTitle, screenCode, lockText, light]);
+    container.add([screenTitle, screenCode, screenHint, lockText, light]);
     this.doorVisual = container;
     this.doorLight = light;
+    this.doorScreenCode = screenCode;
+    this.doorScreenHint = screenHint;
 
-    const sign = addHotTag(this, DOOR_X, 268, '名字门 · 按 E 查验', COLORS.warning, -0.02);
+    const parcel = this.add.container(DOOR_X - 152, 594);
+    parcel.setDepth(14);
+    const parcelG = this.add.graphics();
+    parcelG.fillStyle(COLORS.paperDim, 1);
+    parcelG.fillRect(-42, -46, 84, 46);
+    parcelG.fillStyle(COLORS.paper, 1);
+    parcelG.fillTriangle(-42, -46, 0, -64, 42, -46);
+    parcelG.lineStyle(2, COLORS.coal, 0.8);
+    parcelG.strokeRect(-42, -46, 84, 46);
+    parcelG.lineBetween(-42, -46, 0, -64);
+    parcelG.lineBetween(42, -46, 0, -64);
+    parcelG.fillStyle(COLORS.rust, 0.9);
+    parcelG.fillRect(-32, -30, 64, 8);
+    parcelG.fillStyle(COLORS.warning, 0.85);
+    parcelG.fillRect(-4, -46, 8, 46);
+    const parcelLabel = this.add.text(0, -18, '灭霸', {
+      fontFamily: FONTS.mono,
+      fontSize: '10px',
+      color: CSS.coal,
+      fontStyle: 'bold',
+    });
+    parcelLabel.setOrigin(0.5);
+    parcel.add([parcelG, parcelLabel]);
+
+    const sign = addHotTag(this, DOOR_X, 268, '收发室 · 代签查验', COLORS.warning, -0.02);
     sign.setDepth(16);
     const wire = this.add.graphics();
     wire.lineStyle(2, COLORS.coal, 0.5);
@@ -493,69 +555,254 @@ export class LevelScene extends Phaser.Scene {
     wire.setDepth(12);
   }
 
-  private buildDoorBlock(): void {
-    if (this.doorPassed || !this.doorVisual) {
+  private buildGateBlocks(): void {
+    if (this.gate1Passed || !this.doorVisual) {
       this.doorLight?.setFillStyle(COLORS.neon, 1);
-      this.doorVisual?.setAlpha(0.6);
-      return;
+      this.doorVisual?.setAlpha(0.55);
+    } else {
+      const block = this.add.rectangle(DOOR_X, 470, 104, 336, 0x000000, 0);
+      this.physics.add.existing(block, true);
+      this.doorBlock = block;
+      this.doorCollider = this.physics.add.collider(this.player, block);
     }
-    const block = this.add.rectangle(DOOR_X, 470, 104, 336, 0x000000, 0);
-    this.physics.add.existing(block, true);
-    this.doorBlock = block;
-    this.doorCollider = this.physics.add.collider(this.player, block);
+
+    if (this.gate2Passed) {
+      this.setGate2OpenVisual();
+    } else {
+      const block = this.add.rectangle(EXIT_X, 470, 118, 336, 0x000000, 0);
+      this.physics.add.existing(block, true);
+      this.gate2Block = block;
+      this.gate2Collider = this.physics.add.collider(this.player, block);
+    }
   }
 
   private drawExit(): void {
+    const frame = this.add.container(EXIT_X, 470);
+    frame.setDepth(12);
     const g = this.add.graphics();
-    g.setDepth(12);
     g.fillStyle(COLORS.coal, 0.96);
-    g.fillRect(EXIT_X - 150, 270, 300, 366);
+    g.fillRect(-150, -200, 300, 366);
     g.fillStyle(COLORS.rust, 0.9);
-    g.fillRect(EXIT_X - 150, 270, 300, 14);
+    g.fillRect(-150, -200, 300, 14);
     g.fillStyle(COLORS.warning, 0.8);
-    g.fillRect(EXIT_X - 150, 284, 300, 4);
+    g.fillRect(-150, -186, 300, 4);
     g.fillStyle(COLORS.coalSoft, 1);
-    g.fillRect(EXIT_X - 104, 330, 208, 306);
-    g.fillStyle(COLORS.neon, 0.16);
-    g.fillRect(EXIT_X - 90, 350, 180, 286);
+    g.fillRect(-112, -150, 224, 316);
+    g.fillStyle(COLORS.neon, 0.1);
+    g.fillRect(-98, -136, 196, 302);
     g.lineStyle(3, COLORS.paperDark, 0.6);
-    g.strokeRect(EXIT_X - 104, 330, 208, 306);
-    g.lineStyle(1, COLORS.paper, 0.2);
-    for (let y = 360; y < 630; y += 18) {
-      g.lineBetween(EXIT_X - 88, y, EXIT_X + 88, y);
+    g.strokeRect(-112, -150, 224, 316);
+    g.lineStyle(1, COLORS.paper, 0.16);
+    for (let y = -120; y < 160; y += 18) {
+      g.lineBetween(-96, y, 96, y);
     }
-    g.fillStyle(COLORS.warning, 0.8);
-    g.fillRect(EXIT_X - 104, 596, 208, 40);
-    g.fillStyle(COLORS.coal, 0.8);
-    for (let x = EXIT_X - 96; x < EXIT_X + 96; x += 30) {
-      g.fillTriangle(x, 636, x + 12, 596, x + 22, 636);
-    }
-    const title = this.add.text(EXIT_X, 302, '发布会大厦', {
+    g.fillStyle(COLORS.warning, 0.85);
+    g.fillRect(-112, -38, 224, 10);
+    const title = this.add.text(0, -182, '发布会大厦', {
       fontFamily: FONTS.display,
-      fontSize: '26px',
+      fontSize: '25px',
       color: CSS.paper,
       fontStyle: 'bold',
     });
     title.setOrigin(0.5);
-    title.setDepth(13);
-    const sub = this.add.text(EXIT_X, 332, 'TOP FLOOR · 甄领先', {
+    const sub = this.add.text(0, -156, 'TOP FLOOR · 灭霸', {
       fontFamily: FONTS.mono,
       fontSize: '10px',
       color: CSS.warning,
     });
     sub.setOrigin(0.5);
-    sub.setDepth(13);
-    const tag = addHotTag(this, EXIT_X, 238, '热搜现场 · 发布会', COLORS.warning, 0.03);
-    tag.setDepth(13);
-    const arrow = this.add.text(EXIT_X, 462, '→', {
-      fontFamily: FONTS.display,
-      fontSize: '74px',
+    frame.add([g, title, sub]);
+
+    const rail = this.add.graphics();
+    rail.setDepth(11);
+    rail.lineStyle(4, COLORS.coal, 0.8);
+    rail.lineBetween(EXIT_X - 330, 602, EXIT_X + 280, 602);
+    rail.lineStyle(2, COLORS.warning, 0.5);
+    rail.lineBetween(EXIT_X - 330, 598, EXIT_X + 280, 598);
+    for (let x = EXIT_X - 310; x < EXIT_X + 280; x += 42) {
+      rail.lineStyle(1, COLORS.paperDim, 0.3);
+      rail.lineBetween(x, 596, x + 12, 608);
+    }
+
+    const counter = this.add.graphics();
+    counter.setDepth(13);
+    counter.fillStyle(COLORS.coal, 0.95);
+    counter.fillRect(EXIT_X - 356, 606, 136, 30);
+    counter.fillStyle(COLORS.rust, 0.75);
+    counter.fillRect(EXIT_X - 356, 606, 136, 5);
+    counter.lineStyle(2, COLORS.paperDim, 0.45);
+    counter.strokeRect(EXIT_X - 356, 606, 136, 30);
+    const counterLabel = this.add.text(EXIT_X - 288, 620, '双轴磁带机', {
+      fontFamily: FONTS.mono,
+      fontSize: '9px',
       color: CSS.paper,
+    });
+    counterLabel.setOrigin(0.5);
+    counterLabel.setDepth(14);
+
+    this.gate2ReelA = this.makeTapeReel(EXIT_X - 326, 588);
+    this.gate2ReelB = this.makeTapeReel(EXIT_X - 268, 588);
+    this.gate2Paper = this.add.graphics();
+    this.gate2Paper.setDepth(13);
+
+    const win = this.add.container(EXIT_X, 470);
+    win.setDepth(14);
+    const wg = this.add.graphics();
+    wg.fillStyle(COLORS.coal, 0.35);
+    wg.fillRect(-102, -146, 204, 316);
+    wg.fillStyle(COLORS.paperDim, 1);
+    wg.fillRect(-98, -142, 196, 300);
+    wg.lineStyle(3, COLORS.coal, 0.9);
+    wg.strokeRect(-98, -142, 196, 300);
+    wg.fillStyle(COLORS.warning, 0.95);
+    wg.fillRect(-98, -142, 196, 18);
+    wg.fillStyle(COLORS.coal, 0.75);
+    for (let y = -104; y < 130; y += 20) {
+      wg.fillRect(-84, y, 168, 2);
+    }
+    wg.fillStyle(COLORS.rust, 0.92);
+    wg.fillRect(-84, 48, 168, 64);
+    wg.lineStyle(2, COLORS.warning, 0.8);
+    wg.strokeRect(-84, 48, 168, 64);
+    wg.fillStyle(COLORS.paper, 0.9);
+    wg.fillCircle(54, 122, 10);
+    wg.fillStyle(COLORS.coal, 1);
+    wg.fillCircle(54, 122, 4);
+    const winLabel = this.add.text(0, -124, '取件窗口 · 365', {
+      fontFamily: FONTS.display,
+      fontSize: '18px',
+      color: CSS.coal,
       fontStyle: 'bold',
     });
-    arrow.setOrigin(0.5);
-    arrow.setDepth(13);
-    arrow.setAlpha(0.35);
+    winLabel.setOrigin(0.5);
+    const winSub = this.add.text(0, 80, '凭包裹签收联领取', {
+      fontFamily: FONTS.mono,
+      fontSize: '10px',
+      color: CSS.paper,
+    });
+    winSub.setOrigin(0.5);
+    const winCode = this.add.text(0, -90, 'PICKUP 404', {
+      fontFamily: FONTS.mono,
+      fontSize: '11px',
+      color: CSS.rust,
+      fontStyle: 'bold',
+    });
+    winCode.setOrigin(0.5);
+    win.add([wg, winLabel, winSub, winCode]);
+
+    const logistics = this.add.container(134, -44);
+    const lg = this.add.graphics();
+    lg.fillStyle(COLORS.coal, 0.24);
+    lg.fillRect(-57, -41, 120, 88);
+    lg.fillStyle(COLORS.paper, 0.97);
+    lg.fillRect(-60, -44, 120, 88);
+    lg.lineStyle(2, COLORS.rust, 0.85);
+    lg.strokeRect(-60, -44, 120, 88);
+    lg.fillStyle(COLORS.warning, 0.9);
+    lg.fillRect(-60, -44, 120, 8);
+    lg.fillStyle(COLORS.coal, 0.28);
+    lg.fillRect(-48, 28, 96, 1);
+    const logisticsTitle = this.add.text(0, -28, STRINGS.level.gate2LogisticsTitle, {
+      fontFamily: FONTS.mono,
+      fontSize: '9px',
+      color: CSS.rust,
+      fontStyle: 'bold',
+    });
+    logisticsTitle.setOrigin(0.5);
+    const logisticsLine1 = this.add.text(0, -4, STRINGS.level.gate2LogisticsLine1, {
+      fontFamily: FONTS.body,
+      fontSize: '10px',
+      color: CSS.coal,
+      fontStyle: 'bold',
+    });
+    logisticsLine1.setOrigin(0.5);
+    const logisticsLine2 = this.add.text(0, 16, STRINGS.level.gate2LogisticsLine2, {
+      fontFamily: FONTS.body,
+      fontSize: '12px',
+      color: CSS.rust,
+      fontStyle: 'bold',
+    });
+    logisticsLine2.setOrigin(0.5);
+    const logisticsTape = makeTape(this, 24, -48, 44, 12, COLORS.warning);
+    logisticsTape.setRotation(0.16);
+    logistics.add([lg, logisticsTitle, logisticsLine1, logisticsLine2, logisticsTape]);
+    logistics.setRotation(0.06);
+    win.add(logistics);
+    this.gate2Window = win;
+    this.drawGate2Paper();
+
+    if (!this.gate2Passed) {
+      const tag = addHotTag(this, EXIT_X, 238, '取件窗口 · 按 E 按铃', COLORS.warning, 0.03);
+      tag.setDepth(16);
+    }
+  }
+
+  private makeTapeReel(x: number, y: number): Phaser.GameObjects.Container {
+    const root = this.add.container(x, y);
+    root.setDepth(14);
+    const g = this.add.graphics();
+    g.fillStyle(COLORS.coal, 1);
+    g.fillCircle(0, 0, 19);
+    g.fillStyle(COLORS.paperDim, 0.9);
+    g.fillCircle(0, 0, 15);
+    g.fillStyle(COLORS.coal, 0.9);
+    g.fillCircle(0, 0, 6);
+    g.lineStyle(2, COLORS.rust, 0.9);
+    g.lineBetween(-13, 0, 13, 0);
+    g.lineBetween(0, -13, 0, 13);
+    root.add(g);
+    return root;
+  }
+
+  private drawGate2Paper(): void {
+    if (!this.gate2Paper || !this.gate2Window) {
+      return;
+    }
+    const startX = EXIT_X - 268;
+    const endX = this.gate2Window.x;
+    const g = this.gate2Paper;
+    g.clear();
+    g.lineStyle(3, COLORS.paper, 0.9);
+    g.beginPath();
+    g.moveTo(startX, 596);
+    const span = Math.max(12, endX - startX);
+    const folds = Math.max(2, Math.round(span / 42));
+    for (let i = 1; i <= folds; i += 1) {
+      const t = i / folds;
+      const x = startX + span * t;
+      const y = 596 + (i % 2 === 0 ? -5 : 5);
+      g.lineTo(x, y);
+    }
+    g.strokePath();
+    g.lineStyle(1, COLORS.coal, 0.4);
+    g.beginPath();
+    g.moveTo(startX, 598);
+    for (let i = 1; i <= folds; i += 1) {
+      const t = i / folds;
+      g.lineTo(startX + span * t, 598 + (i % 2 === 0 ? -5 : 5));
+    }
+    g.strokePath();
+  }
+
+  private setGate2OpenVisual(): void {
+    this.gate2Window?.setPosition(EXIT_X, 470).setScale(1).setAlpha(0.12);
+    this.gate2Paper?.clear();
+    const glow = this.add.graphics();
+    glow.setDepth(15);
+    glow.fillStyle(COLORS.neon, 0.18);
+    glow.fillRect(EXIT_X - 96, 340, 192, 286);
+    glow.lineStyle(4, COLORS.neon, 0.85);
+    glow.strokeRect(EXIT_X - 96, 340, 192, 286);
+    const label = this.add.text(EXIT_X, 480, '发布会入口', {
+      fontFamily: FONTS.display,
+      fontSize: '28px',
+      color: CSS.neon,
+      fontStyle: 'bold',
+    });
+    label.setOrigin(0.5);
+    label.setDepth(16);
+    const tag = addHotTag(this, EXIT_X, 238, '取件成功 · 按 E 进入', COLORS.neon, 0.03);
+    tag.setDepth(16);
   }
 
   private drawTutorialSigns(): void {
@@ -565,8 +812,10 @@ export class LevelScene extends Phaser.Scene {
       STRINGS.level.tutorialDoor,
     ]);
     this.addWorldSign(3540, 470, 250, 90, '售货机维修中', ['“检测到弱者饮料需求。”', '——机器也很无奈']);
-    const sign = addHotTag(this, 4220, 566, '名字门 →', COLORS.paperDim, -0.025);
+    const sign = addHotTag(this, 4220, 566, '收发室 →', COLORS.paperDim, -0.025);
     sign.setDepth(16);
+    const topSign = addHotTag(this, 6080, 552, '取件窗口 →', COLORS.paperDim, 0.02);
+    topSign.setDepth(16);
   }
 
   private addWorldSign(x: number, y: number, w: number, h: number, title: string, lines: string[]): void {
@@ -655,18 +904,26 @@ export class LevelScene extends Phaser.Scene {
     };
   }
 
+  private projectileFrom(
+    group: Phaser.Physics.Arcade.Group,
+    objectA: unknown,
+    objectB: unknown,
+  ): Phaser.Physics.Arcade.Image | null {
+    const a = objectA as Phaser.GameObjects.GameObject;
+    const b = objectB as Phaser.GameObjects.GameObject;
+    const target = group.contains(a) ? a : group.contains(b) ? b : null;
+    return target as Phaser.Physics.Arcade.Image | null;
+  }
+
   private setupCollisions(): void {
     this.physics.add.collider(this.player, this.solids);
     this.physics.add.collider(this.enemyGroup, this.solids);
-    this.physics.add.collider(this.bullets, this.solids, (bulletObj) => {
-      const bullet = bulletObj as Phaser.Physics.Arcade.Image;
-      if (bullet.active) {
-        bullet.destroy();
-      }
+    this.physics.add.collider(this.bullets, this.solids, (a, b) => {
+      this.projectileFrom(this.bullets, a, b)?.destroy();
     });
-    this.physics.add.collider(this.enemyBullets, this.solids, (bulletObj) => {
-      const bullet = bulletObj as Phaser.Physics.Arcade.Image;
-      if (bullet.active) {
+    this.physics.add.collider(this.enemyBullets, this.solids, (a, b) => {
+      const bullet = this.projectileFrom(this.enemyBullets, a, b);
+      if (bullet?.active) {
         pixelBurst(this, bullet.x, bullet.y, COLORS.rust, 2, 0.5);
         bullet.destroy();
       }
@@ -783,7 +1040,7 @@ export class LevelScene extends Phaser.Scene {
       fontStyle: 'bold',
     });
     title.setOrigin(0.5);
-    const sub = this.add.text(0, 20, '名字被偷走了，快递照常。先过名字门，再上顶层。', {
+    const sub = this.add.text(0, 20, '名字被偷走了，纸单还留着原字。先过一次名字门。', {
       fontFamily: FONTS.body,
       fontSize: '13px',
       color: CSS.paperDim,
@@ -805,17 +1062,25 @@ export class LevelScene extends Phaser.Scene {
 
   private updateInteractions(): void {
     const player = this.player;
-    this.nearDoor = !this.doorPassed && Math.abs(player.x - DOOR_X) < 150;
-    this.nearExit = Math.abs(player.x - EXIT_X) < 170;
+    this.nearDoor = !this.gate1Passed && Math.abs(player.x - DOOR_X) < 155;
+    this.nearExit = Math.abs(player.x - EXIT_X) < 195;
 
-    if (this.quizOpen || this.rewardOpen) {
+    if (this.quizOpen || this.rewardOpen || this.gateAnimating) {
       this.hud.setHint(null);
       return;
     }
     if (this.nearDoor) {
-      this.hud.setHint(this.touch ? '名字门 404 · 点「交互」查验' : STRINGS.level.doorPrompt);
+      const prompt = STRINGS.level.gate1Prompt;
+      this.hud.setHint(this.touch ? prompt.replace('按 E', '点「交互」') : prompt);
     } else if (this.nearExit) {
-      const prompt = this.doorPassed ? STRINGS.level.exitPrompt : '发布会大门 · 先过名字门';
+      let prompt: string;
+      if (!this.gate1Passed) {
+        prompt = STRINGS.level.gate1Locked;
+      } else if (!this.gate2Passed) {
+        prompt = this.gate2Far ? STRINGS.level.gate2FarPrompt : STRINGS.level.gate2Prompt;
+      } else {
+        prompt = STRINGS.level.exitPrompt;
+      }
       this.hud.setHint(this.touch ? prompt.replace('按 E', '点「交互」') : prompt);
     } else {
       this.hud.setHint(null);
@@ -827,12 +1092,24 @@ export class LevelScene extends Phaser.Scene {
   }
 
   private tryInteract(): void {
-    if (this.quizOpen || this.rewardOpen || this.finished || this.transitioning) {
+    if (this.quizOpen || this.rewardOpen || this.finished || this.transitioning || this.gateAnimating) {
       return;
     }
-    if (this.nearDoor) {
-      this.openDoorQuiz();
+    if (this.nearDoor && !this.gate1Passed) {
+      this.startGate1Sequence();
     } else if (this.nearExit) {
+      if (!this.gate1Passed) {
+        this.hud.toast(STRINGS.level.gate1Locked, 'rust');
+        return;
+      }
+      if (!this.gate2Passed) {
+        if (this.gate2Far) {
+          this.rewindGate2ToNear();
+        } else {
+          this.startGate2Intro();
+        }
+        return;
+      }
       this.tryEnterBoss();
     }
   }
@@ -992,12 +1269,11 @@ export class LevelScene extends Phaser.Scene {
     pixelBurst(this, this.player.x, this.player.y + 30, color, doubleJump ? 7 : 4, 0.6);
   }
 
-  private openDoorQuiz(): void {
-    if (this.quizOpen || this.rewardOpen || this.doorPassed || this.finished) {
-      return;
-    }
+  private beginGateLock(): void {
+    this.gateAnimating = true;
     this.quizOpen = true;
     this.player.setControlEnabled(false);
+    this.player.setVelocity(0, 0);
     this.touch?.setEnabled(false);
     this.hud.setHint(null);
     this.enemies.forEach((enemy) => enemy.setVelocityX(0));
@@ -1005,9 +1281,208 @@ export class LevelScene extends Phaser.Scene {
       const bullet = child as Phaser.Physics.Arcade.Image;
       bullet.destroy();
     });
-    audio.play('door');
+  }
 
-    const prepared = this.quizSystem.prepareDoor();
+  private releaseGateControls(): void {
+    this.player.setControlEnabled(true);
+    this.touch?.setEnabled(true);
+    this.gateAnimating = false;
+  }
+
+  private startGate1Sequence(): void {
+    if (this.quizOpen || this.rewardOpen || this.gate1Passed || this.finished || this.gateAnimating) {
+      return;
+    }
+    this.beginGateLock();
+    audio.play('bell');
+    this.hud.toast(STRINGS.door.receiptJamming, 'paper');
+
+    [160, 380].forEach((delay) => {
+      this.time.delayedCall(delay, () => {
+        audio.play('printerJam');
+        if (this.doorVisual) {
+          this.tweens.add({
+            targets: this.doorVisual,
+            x: DOOR_X + 4,
+            duration: 55,
+            yoyo: true,
+            repeat: 1,
+            ease: 'Sine.easeInOut',
+          });
+        }
+      });
+    });
+
+    const receipt = this.makeWorldReceipt('door_daiqian', DOOR_X, 402, 248, 136);
+    receipt.setScale(1, 0.06);
+    receipt.setAlpha(0);
+    receipt.setDepth(18);
+    this.time.delayedCall(540, () => {
+      audio.play('paper');
+      this.tweens.add({
+        targets: receipt,
+        alpha: 1,
+        scaleY: 1,
+        duration: 620,
+        ease: 'Back.easeOut',
+      });
+    });
+    this.time.delayedCall(2040, () => {
+      receipt.destroy(true);
+      this.gateAnimating = false;
+      this.openGateQuiz(1);
+    });
+  }
+
+  private playGate1ScannerSequence(): void {
+    const screenCode = this.doorScreenCode;
+    const screenHint = this.doorScreenHint;
+    const scanReceipt = this.makeWorldReceipt('door_daiqian', DOOR_X - 36, 410, 218, 120);
+    scanReceipt.setDepth(19);
+    scanReceipt.setScale(0.86);
+    scanReceipt.setAngle(-0.04);
+
+    const scannerX = this.player.x + 18;
+    const scannerY = this.player.y + 4;
+    const scanner = this.add.graphics();
+    scanner.fillStyle(COLORS.coal, 0.95);
+    scanner.fillRect(scannerX - 8, scannerY - 5, 16, 10);
+    scanner.fillStyle(COLORS.warning, 0.9);
+    scanner.fillRect(scannerX - 5, scannerY - 3, 6, 3);
+    scanner.fillStyle(COLORS.neon, 1);
+    scanner.fillRect(scannerX + 5, scannerY - 3, 3, 6);
+    scanner.setDepth(27);
+    this.tweens.add({ targets: scanner, alpha: 0, delay: 900, duration: 260, onComplete: () => scanner.destroy() });
+    const beam = this.add.graphics();
+    beam.setDepth(26);
+    beam.lineStyle(3, COLORS.neon, 0.9);
+    beam.lineBetween(scannerX, scannerY, scanReceipt.x - 24, scanReceipt.y + 8);
+    beam.setAlpha(0);
+    this.tweens.add({ targets: beam, alpha: 0.95, duration: 120, yoyo: true, hold: 220, onComplete: () => beam.destroy() });
+
+    this.tweens.add({
+      targets: scanReceipt,
+      x: this.player.x + 58,
+      y: this.player.y - 34,
+      scale: 0.38,
+      angle: 0.06,
+      duration: 520,
+      ease: 'Cubic.easeInOut',
+    });
+
+    this.time.delayedCall(360, () => {
+      audio.play('scan');
+      addFloatingLine(this, scannerX + 12, scannerY - 28, '滴。', COLORS.neon, 24, 900);
+      screenCode?.setText('代签人：灭建国');
+      screenCode?.setColor(CSS.neon);
+      screenHint?.setText(STRINGS.door.screenRestored);
+      screenHint?.setColor(CSS.neon);
+      this.cameras.main.flash(80, 75, 227, 200, false);
+      this.hud.toast(STRINGS.door.scanRestore, 'neon');
+    });
+
+    this.time.delayedCall(1350, () => {
+      this.openGate1Visual();
+      this.hud.toast(STRINGS.door.receiptTail, 'neon');
+      this.tweens.add({
+        targets: scanReceipt,
+        x: this.player.x + 8,
+        y: this.player.y + 6,
+        scale: 0.28,
+        alpha: 0.18,
+        duration: 560,
+        ease: 'Cubic.easeIn',
+        onComplete: () => scanReceipt.destroy(true),
+      });
+      this.tweens.add({ targets: this.player, angle: { from: 0, to: -9 }, duration: 160, yoyo: true, repeat: 1 });
+      this.time.delayedCall(720, () => {
+        this.gateAnimating = false;
+        this.showCardReward();
+      });
+    });
+  }
+
+  private startGate2Intro(): void {
+    if (this.quizOpen || this.rewardOpen || this.finished || this.gateAnimating || this.gate2Passed) {
+      return;
+    }
+    this.beginGateLock();
+    this.gate2Far = false;
+    audio.play('bell');
+    this.hud.toast(STRINGS.door.windowTape, 'paper');
+    const targetX = EXIT_X + 250;
+    const ticket = this.makeWorldReceipt('door_daodai', EXIT_X - 168, 500, 276, 122);
+    ticket.setDepth(18);
+    ticket.setAlpha(0);
+    ticket.setScale(0.7);
+    this.tweens.add({ targets: ticket, alpha: 1, scale: 1, duration: 300, ease: 'Back.easeOut' });
+    this.time.delayedCall(260, () => {
+      if (!this.gateAnimating || this.gate2Passed || !this.gate2Window) {
+        ticket.destroy(true);
+        return;
+      }
+      audio.play('rewind');
+      if (this.gate2ReelA && this.gate2ReelB) {
+        this.tweens.add({ targets: [this.gate2ReelA, this.gate2ReelB], angle: '+=1400', duration: 760, ease: 'Cubic.easeIn' });
+      }
+      this.tweens.add({
+        targets: this.gate2Window,
+        x: targetX,
+        scale: 0.7,
+        duration: 780,
+        ease: 'Cubic.easeIn',
+        onUpdate: () => this.drawGate2Paper(),
+        onComplete: () => {
+          this.gate2Far = true;
+          ticket.destroy(true);
+          this.hud.toast(STRINGS.door.windowFar, 'rust');
+          this.gateAnimating = false;
+          this.openGateQuiz(2);
+        },
+      });
+    });
+  }
+
+  private rewindGate2ToNear(): void {
+    if (this.quizOpen || this.rewardOpen || this.finished || this.gateAnimating || this.gate2Passed) {
+      return;
+    }
+    this.beginGateLock();
+    audio.play('rewind');
+    this.hud.toast(STRINGS.door.windowRewind, 'neon');
+    if (this.gate2ReelA && this.gate2ReelB) {
+      this.tweens.add({ targets: [this.gate2ReelA, this.gate2ReelB], angle: '-=920', duration: 700, ease: 'Sine.easeInOut' });
+    }
+    this.time.delayedCall(700, () => {
+      this.dragGate2WindowToNear(() => {
+        this.gate2Far = false;
+        this.gateAnimating = false;
+        this.openGateQuiz(2);
+      });
+    });
+  }
+
+  private dragGate2WindowToNear(onComplete: () => void): void {
+    const win = this.gate2Window;
+    if (!win) {
+      onComplete();
+      return;
+    }
+    audio.play('paper');
+    this.tweens.add({
+      targets: win,
+      x: EXIT_X,
+      scale: 1,
+      duration: 850,
+      ease: 'Cubic.easeInOut',
+      onUpdate: () => this.drawGate2Paper(),
+      onComplete,
+    });
+  }
+
+  private openGateQuiz(gate: 1 | 2): void {
+    this.quizOpen = true;
+    const prepared = this.quizSystem.prepareDoor(gate === 1 ? 'door_daiqian' : 'door_daodai');
     let solved = false;
     let failReason: 'wrong' | 'timeout' | null = null;
 
@@ -1041,31 +1516,78 @@ export class LevelScene extends Phaser.Scene {
         this.quizOverlay = null;
         this.quizOpen = false;
         if (solved) {
-          this.finishDoor();
-        } else {
-          this.player.setControlEnabled(true);
-          this.touch?.setEnabled(true);
-          this.hud.toast(
-            failReason === 'timeout' ? STRINGS.door.timeout : STRINGS.door.wrong,
-            'rust',
-          );
+          if (gate === 1) {
+            this.finishGate1();
+          } else {
+            this.finishGate2();
+          }
+          return;
         }
+        this.releaseGateControls();
+        this.hud.toast(
+          failReason === 'timeout' ? STRINGS.door.timeout : STRINGS.door.wrong,
+          'rust',
+        );
       },
     });
   }
 
-  private finishDoor(): void {
-    this.doorPassed = true;
-    this.run.doorPassed = true;
+  private finishGate1(): void {
+    this.gate1Passed = true;
+    this.run.door1Passed = true;
     this.spawnPoint = { x: CHECKPOINT_X, y: 560 };
     this.player.heal(Math.round(PLAYER.maxHp * 0.3));
     this.run.hp = this.player.getHp();
-    this.openDoorVisual();
-    this.hud.toast(STRINGS.door.rewardHeal, 'neon');
-    this.showCardReward();
+    this.gateAnimating = true;
+    this.playGate1ScannerSequence();
   }
 
-  private openDoorVisual(): void {
+  private finishGate2(): void {
+    this.gate2Passed = true;
+    this.run.door2Passed = true;
+    this.spawnPoint = { x: 6180, y: 560 };
+    this.player.heal(Math.round(PLAYER.maxHp * 0.3));
+    this.run.hp = this.player.getHp();
+    this.gateAnimating = true;
+    audio.play('rewind');
+    this.hud.toast(STRINGS.door.windowRewind, 'neon');
+    if (this.gate2ReelA && this.gate2ReelB) {
+      this.tweens.add({ targets: [this.gate2ReelA, this.gate2ReelB], angle: '-=920', duration: 700, ease: 'Sine.easeInOut' });
+    }
+    this.time.delayedCall(700, () => {
+      const finish = () => {
+        this.gate2Far = false;
+        this.audioBellAndOpen();
+      };
+      if (this.gate2Far) {
+        this.dragGate2WindowToNear(finish);
+      } else {
+        finish();
+      }
+    });
+  }
+
+  private audioBellAndOpen(): void {
+    audio.play('bell');
+    this.cameras.main.flash(160, 75, 227, 200, false);
+    this.cameras.main.shake(120, 0.006);
+    if (this.gate2Collider) {
+      this.gate2Collider.destroy();
+      this.gate2Collider = null;
+    }
+    if (this.gate2Block) {
+      this.gate2Block.destroy();
+      this.gate2Block = null;
+    }
+    this.setGate2OpenVisual();
+    this.hud.toast(STRINGS.door.windowDone, 'neon');
+    this.time.delayedCall(1000, () => {
+      this.gateAnimating = false;
+      this.showCardReward();
+    });
+  }
+
+  private openGate1Visual(): void {
     if (this.doorCollider) {
       this.doorCollider.destroy();
       this.doorCollider = null;
@@ -1074,13 +1596,11 @@ export class LevelScene extends Phaser.Scene {
       this.doorBlock.destroy();
       this.doorBlock = null;
     }
-    if (this.doorLight) {
-      this.doorLight.setFillStyle(COLORS.neon, 1);
-    }
+    this.doorLight?.setFillStyle(COLORS.neon, 1);
+    audio.play('stampThud');
+    this.cameras.main.flash(160, 75, 227, 200, false);
+    pixelBurst(this, DOOR_X, 420, COLORS.neon, 14, 1.4);
     if (this.doorVisual) {
-      audio.play('door');
-      this.cameras.main.flash(160, 75, 227, 200, false);
-      pixelBurst(this, DOOR_X, 420, COLORS.neon, 14, 1.4);
       this.tweens.add({
         targets: this.doorVisual,
         alpha: 0.55,
@@ -1088,14 +1608,58 @@ export class LevelScene extends Phaser.Scene {
         duration: 420,
         ease: 'Sine.easeOut',
       });
-      const openStamp = stamp(this, DOOR_X, 470, 'OPEN', {
-        color: COLORS.neon,
-        fontSize: 28,
-        angle: -0.12,
-        alpha: 0.78,
-      });
-      openStamp.setDepth(17);
     }
+    const valid = stamp(this, DOOR_X, 470, STRINGS.door.receiptValid, {
+      color: COLORS.neon,
+      fontSize: 26,
+      angle: -0.12,
+      alpha: 0.86,
+    });
+    valid.setDepth(17);
+    pixelBurst(this, this.player.x - 20, this.player.y + 24, COLORS.warning, 7, 0.8);
+  }
+
+  private makeWorldReceipt(
+    questionId: string,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+  ): Phaser.GameObjects.Container {
+    const question = getQuestion(questionId);
+    const root = this.add.container(x, y);
+    const g = this.add.graphics();
+    g.fillStyle(COLORS.coal, 0.28);
+    g.fillRect(-w / 2 + 4, -h / 2 + 5, w, h);
+    g.fillStyle(COLORS.paper, 1);
+    g.fillRect(-w / 2, -h / 2, w, h);
+    g.lineStyle(2, COLORS.rust, 0.9);
+    g.strokeRect(-w / 2, -h / 2, w, h);
+    g.fillStyle(COLORS.warning, 0.9);
+    g.fillRect(-w / 2, -h / 2, w, 6);
+    g.fillStyle(COLORS.coal, 0.25);
+    for (let i = 0; i < 4; i += 1) {
+      g.fillRect(-w / 2 + 14, -h / 2 + 18 + i * 18, w - 28, 1);
+    }
+    const title = this.add.text(0, -h / 2 + 22, question?.slip?.title ?? '取件小票', {
+      fontFamily: FONTS.mono,
+      fontSize: '11px',
+      color: CSS.rust,
+      fontStyle: 'bold',
+    });
+    title.setOrigin(0.5);
+    const lines = question?.slip?.lines ?? [];
+    const body = this.add.text(0, 8, lines.join('\n'), {
+      fontFamily: FONTS.body,
+      fontSize: '15px',
+      color: CSS.coal,
+      fontStyle: 'bold',
+      align: 'center',
+      lineSpacing: 5,
+    });
+    body.setOrigin(0.5);
+    root.add([g, title, body]);
+    return root;
   }
 
   private showCardReward(): void {
@@ -1306,7 +1870,6 @@ export class LevelScene extends Phaser.Scene {
     this.cards.acquire(chosen.id);
     this.player.heal(Math.round(PLAYER.maxHp * 0.3));
     this.run.hp = this.player.getHp();
-    this.run.doorPassed = true;
     audio.play('card');
     pixelBurst(this, GAME_WIDTH / 2, 380, COLORS.warning, 12, 1.2);
     const accepted = stamp(this, GAME_WIDTH / 2, 540, '签收成功', {
@@ -1348,8 +1911,12 @@ export class LevelScene extends Phaser.Scene {
     if (this.transitioning || this.finished) {
       return;
     }
-    if (!this.doorPassed) {
-      this.hud.toast('名字门还没过，门卫不认脸。', 'rust');
+    if (!this.gate1Passed) {
+      this.hud.toast(STRINGS.level.gate1Locked, 'rust');
+      return;
+    }
+    if (!this.gate2Passed) {
+      this.hud.toast(STRINGS.level.bossLocked, 'rust');
       return;
     }
     this.transitioning = true;
@@ -1420,6 +1987,7 @@ export class LevelScene extends Phaser.Scene {
     this.run.hp = Math.max(0, this.player.getHp());
     this.meme.sync(this.run);
     const payload: ResultPayload = {
+      act: 1,
       victory: false,
       timeMs: elapsedMs(this.run),
       stats: { ...this.run.stats },

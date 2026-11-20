@@ -10,7 +10,10 @@ export interface PreparedQuiz {
 export class QuizSystem {
   private usedDoorIds = new Set<string>();
 
-  prepareDoor(): PreparedQuiz {
+  prepareDoor(questionId?: string): PreparedQuiz {
+    if (questionId) {
+      return this.rebuild(getQuestion(questionId));
+    }
     const all = getDoorQuestions();
     const fresh = all.filter((q) => !this.usedDoorIds.has(q.id));
     const pool = fresh.length > 0 ? fresh : all;

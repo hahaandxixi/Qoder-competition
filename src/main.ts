@@ -6,6 +6,8 @@ import { BootScene } from './scenes/BootScene';
 import { MenuScene } from './scenes/MenuScene';
 import { LevelScene } from './scenes/LevelScene';
 import { BossScene } from './scenes/BossScene';
+import { IslandScene } from './scenes/IslandScene';
+import { WastelandBossScene } from './scenes/WastelandBossScene';
 import { ResultScene } from './scenes/ResultScene';
 import { CreditsScene } from './scenes/CreditsScene';
 import { AuditionScene } from './scenes/AuditionScene';
@@ -34,7 +36,17 @@ const config: Phaser.Types.Core.GameConfig = {
       debug: false,
     },
   },
-  scene: [BootScene, MenuScene, LevelScene, BossScene, ResultScene, CreditsScene, AuditionScene],
+scene: [
+    BootScene,
+    MenuScene,
+    LevelScene,
+    BossScene,
+    IslandScene,
+    WastelandBossScene,
+    ResultScene,
+    CreditsScene,
+    AuditionScene,
+  ],
 };
 
 interface DebugWindow extends Window {
@@ -43,7 +55,7 @@ interface DebugWindow extends Window {
 }
 
 const game = new Phaser.Game(config);
-if (import.meta.env.DEV) {
+if (import.meta.env.DEV || new URLSearchParams(window.location.search).has('debug')) {
   (window as DebugWindow).__RACCOON_GAME__ = game;
   (window as DebugWindow).__RACCOON_AUDIO__ = audio;
 }

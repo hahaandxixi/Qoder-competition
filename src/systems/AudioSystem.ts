@@ -1,5 +1,7 @@
 type MusicMode = 'menu' | 'level' | 'boss' | 'result' | 'none';
 
+type BossDashBeat = 1 | 2 | 3 | 4;
+
 type SoundName =
   | 'jump'
   | 'doubleJump'
@@ -19,7 +21,24 @@ type SoundName =
   | 'defeat'
   | 'hitBoss'
   | 'stagger'
-  | 'burst';
+  | 'burst'
+  | 'paper'
+  | 'printerJam'
+  | 'rewind'
+  | 'bell'
+  | 'spray'
+  | 'stampThud'
+  | 'scan'
+  | 'droneFocus'
+  | 'missileLock'
+  | 'missileLaunch'
+  | 'shutter'
+  | 'canClink'
+  | 'ropeTension'
+  | 'waterDrip'
+  | 'netDrop'
+  | 'gearToss'
+  | 'signScrape';
 
 type AudioContextCtor = typeof AudioContext;
 
@@ -238,12 +257,14 @@ class AudioSystem {
   private mode: MusicMode = 'none';
   private trackName: TrackName | null = null;
   private muted = false;
-  private tension = false;
+private tension = false;
   private ducked = false;
   private readonly duckSources = new Set<DuckSource>();
   private hbInterval: number | null = null;
   private hbEndTimer: number | null = null;
   private resultTimer: number | null = null;
+  private bossDashBus: GainNode | null = null;
+  private bossDashSources: AudioScheduledSourceNode[] = [];
 
   private static readonly MUSIC_VOLUME = 0.5;
   private static readonly DUCK_VOLUME = 0.2;
@@ -444,6 +465,99 @@ class AudioSystem {
         this.arp(now, [523.25, 659.25, 783.99, 1046.5], 0.1, 'square', 0.08);
         this.noise(now, 0.2, 0.05);
         break;
+      case 'paper':
+        // 吐纸：一段短促的“滋啦”抖纸声。
+        this.noise(now, 0.16, 0.05);
+        this.tone(now, 900, 0.13, 'triangle', 0.03, 320);
+        break;
+      case 'printerJam':
+        // 打印机卡纸：低频机械闷响，和扫码的“滴”明确分开。
+        this.tone(now, 120, 0.13, 'square', 0.04, 62);
+        this.noise(now, 0.09, 0.03);
+        break;
+      case 'rewind':
+        // 磁带倒带：先升后降的卷带啸叫。
+        this.tone(now, 320, 0.42, 'sawtooth', 0.035, 940);
+        this.tone(now + 0.18, 880, 0.3, 'sawtooth', 0.03, 260);
+        this.noise(now, 0.5, 0.015);
+        break;
+      case 'bell':
+        // 取件铃：双音“叮——叮”。
+        this.tone(now, 1318.5, 0.34, 'sine', 0.08);
+        this.tone(now + 0.14, 1760, 0.42, 'sine', 0.055);
+        break;
+      case 'spray':
+        // 喷壶洒水：细长的气流声。
+        this.noise(now, 0.24, 0.03);
+        break;
+      case 'stampThud':
+        // 印章砸下：低频闷响加一点纸面震动。
+        this.tone(now, 130, 0.16, 'sawtooth', 0.08, 46);
+        this.noise(now, 0.1, 0.05);
+        break;
+      case 'scan':
+        // 旧扫码枪：一声干脆的“滴”。
+        this.tone(now, 1480, 0.09, 'square', 0.055, 1420);
+        this.tone(now + 0.085, 1180, 0.16, 'sine', 0.045, 1160);
+        break;
+      case 'droneFocus':
+        // 无人机对焦：细窄的升调，不和第一幕的金属章重样。
+        this.tone(now, 520, 0.28, 'triangle', 0.035, 1280);
+        this.tone(now + 0.11, 760, 0.22, 'sine', 0.025, 1760);
+        this.noise(now, 0.18, 0.012);
+        break;
+      case 'missileLock':
+        // 导弹锁定：两短一长的窄频警报，和取景框对焦区分开。
+        this.tone(now, 980, 0.07, 'square', 0.045, 940);
+        this.tone(now + 0.13, 980, 0.07, 'square', 0.045, 940);
+        this.tone(now + 0.26, 1240, 0.16, 'triangle', 0.04, 1180);
+        break;
+      case 'missileLaunch':
+        // 横向导弹发射：低频推力 + 擦风噪声，方向感明显。
+        this.noise(now, 0.3, 0.055);
+        this.tone(now, 180, 0.32, 'sawtooth', 0.06, 70);
+        this.tone(now + 0.04, 760, 0.26, 'triangle', 0.03, 460);
+        break;
+      case 'shutter':
+        // 快门：两下短促的机械“咔”。
+        this.noise(now, 0.035, 0.045);
+        this.tone(now, 2100, 0.028, 'square', 0.035, 1700);
+        this.noise(now + 0.11, 0.045, 0.035);
+        this.tone(now + 0.11, 1800, 0.035, 'square', 0.028, 1400);
+        break;
+      case 'canClink':
+        // 空罐轻响：薄铁皮，比灭霸的方章轻。
+        this.tone(now, 1568, 0.09, 'sine', 0.035, 1530);
+        this.tone(now + 0.025, 2093, 0.06, 'triangle', 0.02, 2000);
+        this.noise(now, 0.035, 0.025);
+        break;
+      case 'ropeTension':
+        // 缆绳绷紧：低频吱呀加一点纤维摩擦。
+        this.tone(now, 150, 0.38, 'sawtooth', 0.035, 86);
+        this.tone(now + 0.08, 96, 0.3, 'triangle', 0.03, 62);
+        this.noise(now, 0.28, 0.022);
+        break;
+      case 'waterDrip':
+        // 水滴：一声清亮的小回弹。
+        this.tone(now, 920, 0.07, 'sine', 0.025, 620);
+        this.tone(now + 0.055, 540, 0.12, 'sine', 0.018, 400);
+        break;
+      case 'netDrop':
+        // 补给网落下：布面兜风的沙沙声和落地闷响。
+        this.noise(now, 0.3, 0.05);
+        this.tone(now + 0.18, 120, 0.2, 'triangle', 0.04, 58);
+        break;
+      case 'gearToss':
+        // 营地器材被抛出：短促的塑料/金属擦风。
+        this.tone(now, 460, 0.16, 'sawtooth', 0.035, 140);
+        this.noise(now, 0.12, 0.025);
+        break;
+      case 'signScrape':
+        // 路牌拖地：偏中频的刮擦，不和四拍金属预警混淆。
+        this.tone(now, 360, 0.22, 'sawtooth', 0.03, 690);
+        this.noise(now, 0.24, 0.035);
+        this.tone(now + 0.08, 220, 0.25, 'triangle', 0.02, 120);
+        break;
       default:
         break;
     }
@@ -541,6 +655,206 @@ class AudioSystem {
     g.connect(master);
     osc.start(t);
     osc.stop(t + 0.3);
+  }
+
+  /** 三连残影冲刺的四拍：1 是举章预警，2/3/4 分别贴着三次冲刺启动。 */
+  playBossDashBeat(beat: BossDashBeat): void {
+    if (!this.ctx || !this.master || this.muted || this.ctx.state !== 'running') {
+      return;
+    }
+    try {
+      const now = this.ctx.currentTime;
+      if (beat === 1) {
+        this.stopBossDashCue();
+      }
+      const bus = this.bossDashBus ?? this.createBossDashBus(now);
+      if (!bus) {
+        return;
+      }
+      switch (beat) {
+        case 1:
+          // 章柄磕铁讲台：高频瞬态 + 不和谐金属泛音 + 短低频闷击。
+          this.dashMetal(bus, now, 1174.66, 0.34, 0.11);
+          this.dashTone(bus, now, 196, 0.1, 'triangle', 0.055, 92, 0.003);
+          this.dashNoise(bus, now, 0.055, 0.09, 'highpass', 2500, 1200, 0.7);
+          break;
+        case 2:
+          // 第一段：公章擦过金属导轨，短而亮。
+          this.dashMetal(bus, now, 1396.91, 0.16, 0.055);
+          this.dashTone(bus, now, 880, 0.18, 'sawtooth', 0.045, 380);
+          this.dashNoise(bus, now, 0.2, 0.075, 'bandpass', 2200, 720, 1.4);
+          this.dashTone(bus, now, 180, 0.17, 'triangle', 0.035, 70);
+          break;
+        case 3:
+          // 第二段：同一条导轨，音高略低，保持同一件道具的质感。
+          this.dashMetal(bus, now, 1244.51, 0.18, 0.06);
+          this.dashTone(bus, now, 740, 0.2, 'sawtooth', 0.045, 320);
+          this.dashNoise(bus, now, 0.22, 0.08, 'bandpass', 1900, 620, 1.3);
+          this.dashTone(bus, now, 160, 0.18, 'triangle', 0.038, 62);
+          break;
+        case 4:
+          // 第三段收尾：更厚的低频、更长的金属余响。
+          this.dashMetal(bus, now, 1046.5, 0.62, 0.1);
+          this.dashTone(bus, now, 174, 0.12, 'triangle', 0.07, 78, 0.003);
+          this.dashNoise(bus, now, 0.32, 0.09, 'bandpass', 2400, 520, 1.1);
+          this.dashTone(bus, now, 520, 0.34, 'sawtooth', 0.05, 160, 0.006);
+          break;
+        default:
+          break;
+      }
+    } catch {
+      // Ignore a failed cue; gameplay timing is unaffected.
+    }
+  }
+
+  /** 取消招式或离开场景时，切断这一组四拍尚未结束的余响。 */
+  stopBossDashCue(): void {
+    const bus = this.bossDashBus;
+    const sources = this.bossDashSources;
+    this.bossDashBus = null;
+    this.bossDashSources = [];
+    if (!this.ctx || !bus) {
+      return;
+    }
+    try {
+      const now = this.ctx.currentTime;
+      bus.gain.cancelScheduledValues(now);
+      bus.gain.setTargetAtTime(0.0001, now, 0.012);
+      for (const source of sources) {
+        try {
+          source.stop(now + 0.06);
+        } catch {
+          // A source may already have ended.
+        }
+      }
+      window.setTimeout(() => {
+        try {
+          bus.disconnect();
+        } catch {
+          // The bus may already be disconnected.
+        }
+      }, 140);
+    } catch {
+      // Ignore transient audio graph errors.
+    }
+  }
+
+  private createBossDashBus(now: number): GainNode | null {
+    if (!this.ctx || !this.master) {
+      return null;
+    }
+    const bus = this.ctx.createGain();
+    bus.gain.setValueAtTime(1, now);
+    bus.connect(this.master);
+    this.bossDashBus = bus;
+    this.bossDashSources = [];
+    return bus;
+  }
+
+  private dashMetal(bus: GainNode, start: number, base: number, duration: number, volume: number): void {
+    const partials = [
+      { ratio: 1, level: 0.5, decay: 1 },
+      { ratio: 1.58, level: 0.28, decay: 0.78 },
+      { ratio: 2.38, level: 0.16, decay: 0.56 },
+      { ratio: 3.17, level: 0.09, decay: 0.4 },
+    ];
+    for (const partial of partials) {
+      this.dashTone(
+        bus,
+        start + (partial.ratio === 1 ? 0 : 0.002),
+        base * partial.ratio,
+        duration * partial.decay,
+        'sine',
+        volume * partial.level,
+        undefined,
+        0.003,
+      );
+    }
+  }
+
+  private dashTone(
+    bus: GainNode,
+    start: number,
+    from: number,
+    duration: number,
+    type: OscillatorType,
+    volume: number,
+    to?: number,
+    attack = 0.008,
+  ): void {
+    if (!this.ctx) {
+      return;
+    }
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(from, start);
+    if (to !== undefined) {
+      osc.frequency.exponentialRampToValueAtTime(Math.max(20, to), start + duration);
+    }
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.linearRampToValueAtTime(volume, start + Math.min(attack, duration * 0.5));
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+    osc.connect(gain);
+    gain.connect(bus);
+    this.trackBossDashSource(osc);
+    osc.start(start);
+    osc.stop(start + duration + 0.02);
+  }
+
+  private dashNoise(
+    bus: GainNode,
+    start: number,
+    duration: number,
+    volume: number,
+    filterType: BiquadFilterType,
+    fromFreq: number,
+    toFreq: number,
+    q: number,
+  ): void {
+    if (!this.ctx) {
+      return;
+    }
+    const frames = Math.max(1, Math.floor(this.ctx.sampleRate * duration));
+    const buffer = this.ctx.createBuffer(1, frames, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < frames; i += 1) {
+      data[i] = Math.random() * 2 - 1;
+    }
+    const src = this.ctx.createBufferSource();
+    src.buffer = buffer;
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = filterType;
+    filter.frequency.setValueAtTime(fromFreq, start);
+    filter.frequency.exponentialRampToValueAtTime(Math.max(40, toFreq), start + duration);
+    filter.Q.value = q;
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.linearRampToValueAtTime(volume, start + 0.006);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(bus);
+    this.trackBossDashSource(src);
+    src.start(start);
+    src.stop(start + duration + 0.02);
+  }
+
+  private trackBossDashSource(source: AudioScheduledSourceNode): void {
+    if (!this.bossDashBus) {
+      return;
+    }
+    this.bossDashSources.push(source);
+    source.addEventListener(
+      'ended',
+      () => {
+        const index = this.bossDashSources.indexOf(source);
+        if (index >= 0) {
+          this.bossDashSources.splice(index, 1);
+        }
+      },
+      { once: true },
+    );
   }
 
   private tone(

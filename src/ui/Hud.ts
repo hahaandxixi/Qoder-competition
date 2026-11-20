@@ -24,6 +24,7 @@ export class Hud {
   private memeValue!: Phaser.GameObjects.Text;
   private memeTitle!: Phaser.GameObjects.Text;
   private streakText!: Phaser.GameObjects.Text;
+  private memePanelY = 24;
   private readonly cardsLayer: Phaser.GameObjects.Container;
   private readonly cardsTitle: Phaser.GameObjects.Text;
   private readonly hintRoot: Phaser.GameObjects.Container;
@@ -157,6 +158,7 @@ export class Hud {
 
   private buildMemePanel(bossMode: boolean): void {
     const y = bossMode ? 104 : 24;
+    this.memePanelY = y;
     const x = GAME_WIDTH / 2 - 220;
     const g = this.scene.add.graphics();
     g.fillStyle(COLORS.coal, 0.8);
@@ -243,6 +245,10 @@ export class Hud {
     this.muteText.setColor(audio.isMuted() ? CSS.paperDim : CSS.neon);
   }
 
+  setVisible(visible: boolean): void {
+    this.root.setVisible(visible);
+  }
+
   updatePlayer(hp: number, maxHp: number): void {
     const ratio = Phaser.Math.Clamp(hp / maxHp, 0, 1);
     this.hpValue.setText(`${Math.max(0, Math.ceil(hp))} / ${maxHp}`);
@@ -256,7 +262,7 @@ export class Hud {
   updateMeme(value: number, burstActive: boolean, streak: number): void {
     const ratio = Phaser.Math.Clamp(value / 100, 0, 1);
     this.memeBar.clear();
-    drawSegmentBar(this.memeBar, GAME_WIDTH / 2 - 210, 52, 420, 13, ratio, burstActive ? COLORS.neon : COLORS.rust, 28);
+    drawSegmentBar(this.memeBar, GAME_WIDTH / 2 - 210, this.memePanelY + 28, 420, 13, ratio, burstActive ? COLORS.neon : COLORS.rust, 28);
     this.memeValue.setText(`${Math.round(value)}%`);
     this.memeValue.setColor(burstActive ? CSS.neon : CSS.warning);
     if (burstActive) {
@@ -431,14 +437,38 @@ export class Hud {
     });
   }
 
-  updateBoss(name: string, title: string, hp: number, maxHp: number, phase: number, totalPhases: number): void {
+  updateBoss(
+    name: string,
+    title: string,
+    hp: number,
+    maxHp: number,
+    phase: number,
+    totalPhases: number,
+    bar = 1,
+    totalBars = 1,
+  ): void {
     this.bossRoot.setVisible(true);
     this.bossName.setText(`${name} · ${title}`);
-    this.bossPhase.setText(`${STRINGS.hud.phase} ${phase}/${totalPhases}`);
+    this.bossPhase.setText(
+      totalBars > 1
+        ? bar >= 2
+          ? STRINGS.act2.secondPhaseLabel
+          : '第一阶段'
+        : `${STRINGS.hud.phase} ${phase}/${totalPhases}`,
+    );
     this.bossValue.setText(`${STRINGS.hud.bossHp} ${Math.max(0, Math.ceil(hp))} / ${maxHp}`);
     const ratio = Phaser.Math.Clamp(hp / maxHp, 0, 1);
     this.bossBar.clear();
-    drawSegmentBar(this.bossBar, 414, 68, 490, 12, ratio, COLORS.rust, 24);
+    if (totalBars > 1 && bar >= 2) {
+      drawSegmentBar(this.bossBar, 414, 62, 490, 5, 0, COLORS.rust, 24);
+      drawSegmentBar(this.bossBar, 414, 69, 490, 7, ratio, COLORS.rust, 24);
+    } else {
+      drawSegmentBar(this.bossBar, 414, 68, 490, 12, ratio, COLORS.rust, 24);
+    }
+  }
+
+  setBossVisible(visible: boolean): void {
+    this.bossRoot.setVisible(visible);
   }
 
   dispose(): void {
