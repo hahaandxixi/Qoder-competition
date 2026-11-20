@@ -12,6 +12,7 @@ export const WORLD = {
 
 export const PLAYER = {
   maxHp: 100,
+  lowHpRatio: 0.3,
   moveSpeed: 285,
   groundAccel: 2600,
   airAccel: 1900,

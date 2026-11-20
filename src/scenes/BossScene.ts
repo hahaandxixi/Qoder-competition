@@ -99,6 +99,7 @@ export class BossScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, GAME_WIDTH, GAME_HEIGHT);
     this.cameras.main.setBounds(0, 0, GAME_WIDTH, GAME_HEIGHT);
     this.cameras.main.fadeIn(280, 23, 19, 16);
+    audio.resetSceneMix();
     audio.setMusic('boss');
 
     this.buildArena();
@@ -140,6 +141,7 @@ export class BossScene extends Phaser.Scene {
       this.tickAlly(time);
       this.cleanupProjectiles(time);
       this.hud.updatePlayer(this.player.getHp(), this.player.getMaxHp());
+      audio.setTension(this.player.getHp() <= this.player.getMaxHp() * PLAYER.lowHpRatio);
       this.hud.updateMeme(this.meme.getValue(), this.meme.isBurstActive(), this.meme.getStreak());
       this.hud.updateBoss(
         this.boss.config.name,
