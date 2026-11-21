@@ -7,6 +7,7 @@ import {
   MEME,
   PLAYER,
   QUIZ,
+  TRAP,
   WORLD,
 } from '../config/balance';
 import { COLORS, CSS, FONTS, TEX } from '../config/theme';
@@ -35,6 +36,9 @@ import { MemeMeter } from '../systems/MemeMeter';
 import { QuizSystem } from '../systems/QuizSystem';
 import { elapsedMs, getRunState } from '../systems/RunState';
 import { audio } from '../systems/AudioSystem';
+import { ReturnParcelTrap } from '../systems/ReturnParcelTrap';
+import { voice, type VoicePresenter } from '../systems/VoiceSystem';
+import { createVoicePresenter } from '../ui/VoiceSubtitle';
 
 const ISLAND_WIDTH = 4300;
 const GROUND_Y = 636;
@@ -48,7 +52,7 @@ const PLATFORMS: Array<[number, number, number, number]> = [
   [760, 456, 180, 26],
   [1560, 430, 180, 26],
   [2290, 512, 210, 26],
-  [2480, 448, 180, 26],
+  [2480, 380, 180, 26],
   [3520, 500, 200, 26],
   [3820, 444, 170, 26],
 ];
@@ -65,6 +69,11 @@ const MISSILE_GAP_END = 1520;
 const MISSILE_LAUNCH_X = 1600;
 const MISSILE_Y = 530;
 const BRIDGE_CHECKPOINT_X = 1080;
+const RETURN_TRAP_SPAWN_X = 2280;
+const RETURN_TRAP_CHUTE_X = 2760;
+const RETURN_TRAP_PATH_Y = 560;
+const RETURN_TRAP_TRIGGER_X = 2520;
+const RETURN_TRAP_DEMO_X = 2340;
 
 export class IslandScene extends Phaser.Scene {
   private run!: RunState;
@@ -129,6 +138,8 @@ export class IslandScene extends Phaser.Scene {
   private spawnPoint = { x: 150, y: 560 };
   private pendingReason = STRINGS.act2.deathReason;
   private cardsChangedHandler: (() => void) | null = null;
+  private returnTrap: ReturnParcelTrap | null = null;
+  private voicePresenter: VoicePresenter | null = null;
 
   constructor() {
     super('Island');
@@ -176,6 +187,8 @@ export class IslandScene extends Phaser.Scene {
     this.missileTutorialActive = false;
     this.bridgeCheckpointToasted = false;
     this.cardsChangedHandler = null;
+    this.returnTrap = null;
+    this.voicePresenter = null;
     this.solids.length = 0;
     this.crabs.length = 0;
 
@@ -201,6 +214,11 @@ export class IslandScene extends Phaser.Scene {
     this.cameras.main.fadeIn(260, 23, 19, 16);
     audio.resetSceneMix();
     audio.setMusic('level');
+    voice.stopAll();
+    voice.resetOneShots();
+    voice.preloadAll();
+    this.voicePresenter = createVoicePresenter(this);
+    voice.setPresenter(this.voicePresenter);
 
     this.buildBackground();
     this.buildGeometry();
@@ -219,6 +237,7 @@ export class IslandScene extends Phaser.Scene {
     this.meme = new MemeMeter(this.run);
     this.initGroups();
     this.spawnCrabs();
+    this.setupReturnTrap();
     this.setupCollisions();
     this.setupHud();
     this.setupTouch();
@@ -252,6 +271,7 @@ export class IslandScene extends Phaser.Scene {
     this.updateBridgeCheckpoint();
     this.maybeStartMissileTutorial();
     this.tickMissileChallenge();
+    this.returnTrap?.update(time);
 
     if (!this.respawning && !this.transitioning && this.player.y > WORLD.fallDamageY) {
       this.handleFall();
@@ -1458,8 +1478,34 @@ export class IslandScene extends Phaser.Scene {
         ease: 'Sine.easeInOut',
       });
     }
+    const card = this.add.image(this.player.x + 12, this.player.y + 10, TEX.cardIcon);
+    card.setDepth(72);
+    card.setScale(0.9);
+    card.setAlpha(0);
+    card.setAngle(-0.08);
+    this.tweens.add({
+      targets: card,
+      alpha: 1,
+      y: card.y - 10,
+      scale: 1.15,
+      duration: 220,
+      yoyo: true,
+      hold: 460,
+      onComplete: () => card.destroy(),
+    });
+    voice.speak({
+      clip: 'droneCheck',
+      speaker: STRINGS.act2.droneName,
+      text: STRINGS.act2.droneCheck,
+      ownerId: 'drone-tutorial',
+      x: this.player.x + 20,
+      y: this.player.y - 100,
+      color: COLORS.warning,
+      priority: 2,
+      dedupeKey: 'drone-check:act2',
+    });
     audio.play('droneFocus');
-    this.time.delayedCall(420, () => {
+    this.time.delayedCall(620, () => {
       if (epoch !== this.tutorialEpoch || this.finished) {
         return;
       }
@@ -1553,6 +1599,46 @@ export class IslandScene extends Phaser.Scene {
       const crab = new SupplyCrab(this, x, y, host);
       this.crabGroup.add(crab);
       this.crabs.push(crab);
+    });
+  }
+
+  private setupReturnTrap(): void {
+    this.returnTrap = new ReturnParcelTrap(this, {
+      spawnX: RETURN_TRAP_SPAWN_X,
+      chuteX: RETURN_TRAP_CHUTE_X,
+      pathY: RETURN_TRAP_PATH_Y,
+      groundY: GROUND_Y,
+      triggerX: RETURN_TRAP_TRIGGER_X,
+      demoTriggerX: RETURN_TRAP_DEMO_X,
+      player: () => this.player,
+      canTrigger: () =>
+        this.gate1Passed &&
+        !this.finished &&
+        !this.transitioning &&
+        !this.quizOpen &&
+        !this.rewardOpen &&
+        !this.gateAnimating &&
+        !this.missileTutorialActive,
+      onPlayerHit: () => {
+        const actual = this.player.takeDamage(TRAP.returnParcelDamage, RETURN_TRAP_CHUTE_X);
+        if (actual > 0) {
+          this.cameras.main.shake(140, COMBAT.cameraShakeLight);
+        }
+        return actual;
+      },
+      onToast: (text, tone) => this.hud.toast(text, tone),
+      onDemoStart: () => {
+        this.player.setControlEnabled(false);
+        this.touch?.setEnabled(false);
+        this.hud.setHint(null);
+      },
+      onDemoEnd: () => {
+        if (this.finished) {
+          return;
+        }
+        this.player.setControlEnabled(!this.quizOpen && !this.rewardOpen && !this.gateAnimating);
+        this.touch?.setEnabled(!this.quizOpen && !this.rewardOpen && !this.gateAnimating);
+      },
     });
   }
 
@@ -1820,6 +1906,7 @@ export class IslandScene extends Phaser.Scene {
   }
 
   private beginGateLock(): void {
+    this.returnTrap?.reset();
     this.gateAnimating = true;
     this.quizOpen = true;
     this.player.setControlEnabled(false);
@@ -2433,6 +2520,7 @@ export class IslandScene extends Phaser.Scene {
     this.pendingReason = STRINGS.act2.fall;
     this.player.setControlEnabled(false);
     this.touch?.setEnabled(false);
+    this.returnTrap?.reset();
     this.resetMissileChallenge();
     this.hud.toast(STRINGS.act2.fall, 'rust');
     this.player.takeDamage(PLAYER.fallRespawnDamage);
@@ -2502,5 +2590,12 @@ export class IslandScene extends Phaser.Scene {
     this.viewfinder = null;
     this.tutorialEpoch += 1;
     this.quizOverlay = null;
+    this.returnTrap?.destroy();
+    this.returnTrap = null;
+    voice.stopAll();
+    if (this.voicePresenter) {
+      voice.setPresenter(null);
+      this.voicePresenter = null;
+    }
   }
 }

@@ -57,6 +57,27 @@ export const HAZARD = {
   damage: 14,
 } as const;
 
+export const TRAP = {
+  stampDamage: 18,
+  stampSupplyHeal: 22,
+  stampDelayMs: 1200,
+  stampDropMs: 240,
+  stampLiftDelayMs: 520,
+  stampLiftMs: 360,
+  stampShadowWidth: 150,
+  stampPlateWidth: 96,
+  stampDemoTriggerRadius: 520,
+  returnParcelDamage: 16,
+  returnLaunchDelayMs: 220,
+  returnOutboundMs: 1100,
+  returnRewindMs: 420,
+  returnReturnMs: 1050,
+  returnCooldownMs: 900,
+  returnDemoOutboundMs: 1000,
+  returnDemoRewindMs: 500,
+  returnDemoReturnMs: 1000,
+} as const;
+
 export const COMBAT = {
   hitstopLightMs: 45,
   hitstopHeavyMs: 110,

@@ -36,6 +36,13 @@
   },
   "level": {
     "introLine": "不好，我的浮木被灭霸抓走了！",
+    "stampDemoName": "已签收，请退后",
+    "stampDemoHint": "空箱先演一遍：压板、章影、落章。",
+    "stampLiveHint": "补给压板 · 拿了就退",
+    "stampSupply": "补给签收：网络热度 +22",
+    "stampHit": "已签收。章只落一次，退一步就安全。",
+    "stampCrush": "负鼠替你签收了。",
+    "stampMark": "已签收",
     "tutorialMove": "A / D 移动 · SPACE 二段跳",
     "tutorialCombat": "J 射击 · K 冲刺",
     "tutorialDoor": "按 E 与名字门对线",
@@ -61,6 +68,19 @@
   "act2": {
     "introTitle": "第二幕 · 荒野岛",
     "introSub": "风把路牌吹向同一边。先看懂无人机，再过名字门。",
+    "droneName": "荒野岛跟拍无人机",
+    "droneCheck": "我要验牌！",
+    "returnName": "快递原路退回",
+    "returnSign": "原路退回",
+    "returnDemo": "练习件：去程进回收口，半拍后原路退回。先看完。",
+    "returnReady": "轮到你：先跳去程，再看回收灯跳返程。",
+    "returnTrigger": "压板：退件会回来。",
+    "returnLock": "回收口亮灯：先停半拍，再跳过退件。",
+    "returnOutbound": "去程",
+    "returnParcel": "退件",
+    "returnHit": "退件迎面撞上。冲刺交早了。",
+    "returnOutboundHit": "去程件撞上了。先跳过第一件，再听回收灯。",
+    "returnSafe": "退件擦过。",
     "tutorialTitle": "安全示范 · 先看空箱",
     "tutorialCrate": "无人机先拍空箱：框角合拢，快门响，补给网只罩住箱子。",
     "tutorialPlayer": "现在轮到你了：走出框，或按 K 冲刺。",
@@ -257,6 +277,7 @@
     "assets": [
       "角色、敌人、Boss、场景与 UI：\n全部由代码程序化绘制（自制）。",
       "音效与背景音乐：WebAudio\n实时合成（自制），未使用任何视频或音频片段。",
+      "角色语音：本版暂用系统 TTS 生成的占位音，\n非队伍真人录音；字幕同步，后续可替换。",
       "引擎：Phaser 3（MIT）；构建：Vite（MIT）；\n语言：TypeScript（Apache-2.0）。",
       "字体：使用设备本地系统字体，\n未从外部 CDN 加载字体。"
     ],
@@ -283,8 +304,14 @@
   "enemy": {
     "opossumName": "背手负鼠",
     "lobsterName": "龙虾机器人",
+    "droneName": "荒野岛跟拍无人机",
     "opossumTaunt": "梆梆！",
+    "opossumMumble": "扎啤吧？",
+    "opossumGuard": "你的胆子真是肥嘟嘟的。",
     "lobsterTaunt": "请排队取号。",
+    "lobsterFirstShot": "遥遥领先。",
+    "lobsterBreak": "不烧心。",
+    "droneCheck": "我要验牌！",
     "hitLabel": "包裹受损"
   },
   "barrage": [

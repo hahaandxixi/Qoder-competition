@@ -35,6 +35,7 @@ import { MemeMeter } from '../systems/MemeMeter';
 import { QuizSystem } from '../systems/QuizSystem';
 import { elapsedMs, getRunState } from '../systems/RunState';
 import { audio } from '../systems/AudioSystem';
+import { voice } from '../systems/VoiceSystem';
 
 const BOSS_HOVER_X = 930;
 const BOSS_HOVER_Y = 500;
@@ -143,6 +144,9 @@ export class BossScene extends Phaser.Scene {
     this.cameras.main.fadeIn(280, 23, 19, 16);
     audio.resetSceneMix();
     audio.setMusic('boss');
+    voice.stopAll();
+    voice.resetOneShots();
+    voice.preloadAll();
 
     this.buildArena();
     this.player = new Player(this, 220, 560, this.run.hp, this.makePlayerCallbacks());
@@ -2320,7 +2324,19 @@ export class BossScene extends Phaser.Scene {
     bubble.setDepth(170);
     bubble.setAlpha(0);
     this.tweens.add({ targets: bubble, alpha: 1, duration: 180, ease: 'Sine.easeOut' });
-    this.time.delayedCall(1500, () => {
+    voice.speak({
+      clip: 'raccoonDefeat',
+      speaker: '阿浣',
+      text: STRINGS.boss.playerDefeatLine,
+      ownerId: 'raccoon-defeat',
+      x: this.player.x,
+      y: this.player.y - 94,
+      color: COLORS.warning,
+      priority: 2,
+      dedupeKey: 'act1-defeat-line',
+      subtitle: false,
+    });
+    this.time.delayedCall(2200, () => {
       this.tweens.add({
         targets: bubble,
         alpha: 0,
@@ -2573,6 +2589,7 @@ export class BossScene extends Phaser.Scene {
 
   private cleanupScene(): void {
     audio.stopBossDashCue();
+    voice.stopAll();
     if (this.cardsChangedHandler) {
       this.events.off('cards-changed', this.cardsChangedHandler);
       this.cardsChangedHandler = null;

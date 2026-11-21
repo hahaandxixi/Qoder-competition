@@ -1,3 +1,5 @@
+import { VOICE_CLIP_FILES, type VoiceClipName } from './voiceClips';
+
 type MusicMode = 'menu' | 'level' | 'boss' | 'result' | 'none';
 
 type BossDashBeat = 1 | 2 | 3 | 4;
@@ -38,7 +40,10 @@ type SoundName =
   | 'waterDrip'
   | 'netDrop'
   | 'gearToss'
-  | 'signScrape';
+  | 'signScrape'
+  | 'stampClick'
+  | 'knock'
+  | 'parcelWhoosh';
 
 type AudioContextCtor = typeof AudioContext;
 
@@ -53,7 +58,12 @@ export function isTrackName(value: string | null | undefined): value is TrackNam
   return value === 'menu' || value === 'level' || value === 'boss' || value === 'victory';
 }
 
-type DuckSource = 'quiz' | 'heartbeat';
+type DuckSource = 'quiz' | 'heartbeat' | 'voice';
+
+export interface VoicePlayback {
+  source: AudioBufferSourceNode;
+  durationMs: number;
+}
 
 interface BassNote {
   step: number;
@@ -265,6 +275,10 @@ private tension = false;
   private resultTimer: number | null = null;
   private bossDashBus: GainNode | null = null;
   private bossDashSources: AudioScheduledSourceNode[] = [];
+  private readonly voiceBuffers = new Map<VoiceClipName, AudioBuffer>();
+  private readonly voiceLoads = new Map<VoiceClipName, Promise<AudioBuffer | null>>();
+  private readonly voiceSources = new Set<AudioBufferSourceNode>();
+  private captureDest: MediaStreamAudioDestinationNode | null = null;
 
   private static readonly MUSIC_VOLUME = 0.5;
   private static readonly DUCK_VOLUME = 0.2;
@@ -348,6 +362,7 @@ private tension = false;
   }
 
   resetSceneMix(): void {
+    this.stopAllVoiceClips();
     this.clearHeartbeat();
     this.duckSources.clear();
     this.applyDuck();
@@ -381,6 +396,109 @@ private tension = false;
     } catch {
       // Ignore.
     }
+  }
+
+  preloadVoice(name: VoiceClipName): Promise<AudioBuffer | null> {
+    const cached = this.voiceBuffers.get(name);
+    if (cached) {
+      return Promise.resolve(cached);
+    }
+    const pending = this.voiceLoads.get(name);
+    if (pending) {
+      return pending;
+    }
+    if (!this.ctx) {
+      return Promise.resolve(null);
+    }
+    const url = `${import.meta.env.BASE_URL}voice/${VOICE_CLIP_FILES[name]}`;
+    const load = fetch(url)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`voice ${name} unavailable`);
+        }
+        return response.arrayBuffer();
+      })
+      .then((data) => this.ctx!.decodeAudioData(data))
+      .then((buffer) => {
+        this.voiceBuffers.set(name, buffer);
+        return buffer;
+      })
+      .catch(() => null)
+      .finally(() => {
+        this.voiceLoads.delete(name);
+      });
+    this.voiceLoads.set(name, load);
+    return load;
+  }
+
+  hasVoice(name: VoiceClipName): boolean {
+    return this.voiceBuffers.has(name);
+  }
+
+  playVoiceClip(name: VoiceClipName, volume = 1, maxDurationMs?: number): VoicePlayback | null {
+    if (!this.ctx || !this.master || this.muted || this.ctx.state !== 'running') {
+      return null;
+    }
+    const buffer = this.voiceBuffers.get(name);
+    if (!buffer) {
+      return null;
+    }
+    try {
+      const source = this.ctx.createBufferSource();
+      const gain = this.ctx.createGain();
+      source.buffer = buffer;
+      gain.gain.value = volume;
+      source.connect(gain);
+      gain.connect(this.master);
+      const startAt = this.ctx.currentTime + 0.01;
+      const durationMs = Math.min(buffer.duration * 1000, maxDurationMs ?? Number.POSITIVE_INFINITY);
+      source.start(startAt);
+      source.stop(startAt + durationMs / 1000);
+      this.voiceSources.add(source);
+      source.addEventListener(
+        'ended',
+        () => {
+          this.voiceSources.delete(source);
+          try {
+            source.disconnect();
+            gain.disconnect();
+          } catch {
+            // The audio graph may already be torn down.
+          }
+        },
+        { once: true },
+      );
+      return { source, durationMs };
+    } catch {
+      return null;
+    }
+  }
+
+  stopVoiceClip(source: AudioBufferSourceNode): void {
+    try {
+      source.stop();
+    } catch {
+      // The source may already have ended.
+    }
+  }
+
+  stopAllVoiceClips(): void {
+    for (const source of this.voiceSources) {
+      this.stopVoiceClip(source);
+    }
+    this.voiceSources.clear();
+  }
+
+  /** Debug/recording hook: mirrors the master bus into a MediaStream. */
+  createCaptureStream(): MediaStream | null {
+    if (!this.ctx || !this.master) {
+      return null;
+    }
+    if (!this.captureDest) {
+      this.captureDest = this.ctx.createMediaStreamDestination();
+      this.master.connect(this.captureDest);
+    }
+    return this.captureDest.stream;
   }
 
   play(name: SoundName): void {
@@ -557,6 +675,23 @@ private tension = false;
         this.tone(now, 360, 0.22, 'sawtooth', 0.03, 690);
         this.noise(now, 0.24, 0.035);
         this.tone(now + 0.08, 220, 0.25, 'triangle', 0.02, 120);
+        break;
+      case 'stampClick':
+        // 压板弹簧：短、硬、和重章落地的低频分开。
+        this.tone(now, 1380, 0.035, 'square', 0.055, 760);
+        this.noise(now, 0.022, 0.025);
+        break;
+      case 'knock':
+        // 负鼠扑击前敲两下木箱，保留“梆梆”的可听预警。
+        this.tone(now, 230, 0.06, 'triangle', 0.07, 120);
+        this.noise(now, 0.045, 0.025);
+        this.tone(now + 0.13, 196, 0.07, 'triangle', 0.06, 104);
+        this.noise(now + 0.13, 0.05, 0.02);
+        break;
+      case 'parcelWhoosh':
+        // 退件擦风：中频包裹掠过，不掩盖低音章和锁定警报。
+        this.noise(now, 0.24, 0.035);
+        this.tone(now, 430, 0.22, 'sawtooth', 0.032, 150);
         break;
       default:
         break;

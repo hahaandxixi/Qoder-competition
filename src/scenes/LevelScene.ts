@@ -9,6 +9,7 @@ import {
   MEME,
   PLAYER,
   QUIZ,
+  TRAP,
   UI,
   WORLD,
 } from '../config/balance';
@@ -29,6 +30,9 @@ import {
 import { Player, type PlayerCallbacks } from '../entities/Player';
 import { Enemy, type EnemyHost } from '../entities/Enemy';
 import { Ally } from '../entities/Ally';
+import { StampTrap } from '../systems/StampTrap';
+import { voice, type VoicePresenter } from '../systems/VoiceSystem';
+import { createVoicePresenter } from '../ui/VoiceSubtitle';
 import { Hud } from '../ui/Hud';
 import { QuizOverlay } from '../ui/QuizOverlay';
 import { TouchControls, isTouchDevice } from '../ui/TouchControls';
@@ -72,6 +76,10 @@ const PLATFORMS: Array<[number, number, number, number]> = [
 const DOOR_X = 4440;
 const EXIT_X = 6340;
 const CHECKPOINT_X = 4600;
+const STAMP_DEMO_X = 2110;
+const STAMP_LIVE_X = 3575;
+const STAMP_BAIT_X = 3660;
+const STAMP_GUARD_X = 4230;
 
 export class LevelScene extends Phaser.Scene {
   private run!: RunState;
@@ -121,6 +129,12 @@ export class LevelScene extends Phaser.Scene {
   private lastRunDust = 0;
   private cardsChangedHandler: (() => void) | null = null;
   private selectingReward = false;
+  private stampDemo: StampTrap | null = null;
+  private stampLive: StampTrap | null = null;
+  private stampBait: Enemy | null = null;
+  private signedMark: Phaser.GameObjects.Container | null = null;
+  private signedMarkUntil = 0;
+  private voicePresenter: VoicePresenter | null = null;
 
   constructor() {
     super('Level');
@@ -156,6 +170,12 @@ export class LevelScene extends Phaser.Scene {
     this.enemies.length = 0;
     this.cardsChangedHandler = null;
     this.lastRunDust = 0;
+    this.stampDemo = null;
+    this.stampLive = null;
+    this.stampBait = null;
+    this.signedMark = null;
+    this.signedMarkUntil = 0;
+    this.voicePresenter = null;
 
     this.run = getRunState(this);
     this.run.act = 1;
@@ -176,6 +196,11 @@ export class LevelScene extends Phaser.Scene {
     this.cameras.main.fadeIn(260, 23, 19, 16);
     audio.resetSceneMix();
     audio.setMusic('level');
+    voice.stopAll();
+    voice.resetOneShots();
+    voice.preloadAll();
+    this.voicePresenter = createVoicePresenter(this);
+    voice.setPresenter(this.voicePresenter);
 
     this.buildBackground();
     this.buildGeometry();
@@ -183,6 +208,7 @@ export class LevelScene extends Phaser.Scene {
     this.meme = new MemeMeter(this.run);
     this.initGroups();
     this.spawnEnemies();
+    this.setupStampTraps();
     this.setupCollisions();
     this.buildGateBlocks();
     this.setupHud();
@@ -212,6 +238,9 @@ export class LevelScene extends Phaser.Scene {
       this.cleanupProjectiles(time);
       this.updateRunDust(time);
       this.updateInteractions();
+      this.stampDemo?.update();
+      this.stampLive?.update();
+      this.updateSignedMark(time);
 
       if (!this.respawning && !this.transitioning && this.player.y > WORLD.fallDamageY) {
         this.handleFall();
@@ -870,20 +899,76 @@ export class LevelScene extends Phaser.Scene {
 
   private spawnEnemies(): void {
     const host = this.makeEnemyHost();
-    const placements: Array<[Enemy['kind'], number, number]> = [
-      ['opossum', 780, 600],
-      ['opossum', 1700, 600],
-      ['lobster', 2295, 490],
-      ['opossum', 2820, 600],
-      ['lobster', 3110, 408],
-      ['opossum', 4070, 600],
-      ['lobster', 5300, 490],
-      ['opossum', 5680, 600],
+    const placements: Array<{
+      kind: Enemy['kind'];
+      x: number;
+      y: number;
+      options?: { guardLine?: string; dormant?: boolean };
+    }> = [
+      { kind: 'opossum', x: 780, y: 600 },
+      { kind: 'opossum', x: 1700, y: 600 },
+      { kind: 'lobster', x: 2295, y: 490 },
+      { kind: 'opossum', x: 2820, y: 600 },
+      { kind: 'lobster', x: 3110, y: 408 },
+      { kind: 'opossum', x: STAMP_BAIT_X, y: 600, options: { dormant: true } },
+      { kind: 'opossum', x: STAMP_GUARD_X, y: 600, options: { guardLine: STRINGS.enemy.opossumGuard } },
+      { kind: 'lobster', x: 5300, y: 490 },
+      { kind: 'opossum', x: 5680, y: 600 },
     ];
-    placements.forEach(([kind, x, y]) => {
-      const enemy = new Enemy(this, x, y, kind, host);
+    placements.forEach(({ kind, x, y, options }) => {
+      const enemy = new Enemy(this, x, y, kind, host, options);
       this.enemyGroup.add(enemy);
       this.enemies.push(enemy);
+      if (options?.dormant) {
+        this.stampBait = enemy;
+      }
+    });
+  }
+
+  private setupStampTraps(): void {
+    this.stampDemo = new StampTrap(this, {
+      x: STAMP_DEMO_X,
+      groundY: 636,
+      mode: 'demo',
+      player: () => this.player,
+      enemies: () => this.enemies,
+      canTrigger: () => !this.finished && !this.transitioning,
+    });
+    this.stampLive = new StampTrap(this, {
+      x: STAMP_LIVE_X,
+      groundY: 636,
+      mode: 'live',
+      player: () => this.player,
+      enemies: () => this.enemies,
+      canTrigger: () =>
+        !this.finished &&
+        !this.transitioning &&
+        !this.quizOpen &&
+        !this.rewardOpen &&
+        !this.gateAnimating,
+      onTrigger: () => {
+        this.stampBait?.wake();
+        this.hud.toast(STRINGS.level.stampLiveHint, 'paper');
+      },
+      onSupply: () => {
+        this.player.heal(TRAP.stampSupplyHeal);
+        this.run.hp = this.player.getHp();
+        this.hud.toast(STRINGS.level.stampSupply, 'neon');
+        audio.play('card');
+      },
+      onPlayerHit: () => {
+        const actual = this.player.takeDamage(TRAP.stampDamage, STAMP_LIVE_X);
+        if (actual > 0) {
+          this.cameras.main.shake(130, COMBAT.cameraShakeHeavy);
+          this.showSignedMark();
+          this.hud.toast(STRINGS.level.stampHit, 'rust');
+        }
+      },
+      onEnemyCrush: (enemy) => {
+        voice.cancelOwner(enemy.voiceOwnerId);
+        enemy.takeCrush();
+        this.hud.toast(STRINGS.level.stampCrush, 'neon');
+      },
     });
   }
 
@@ -901,6 +986,9 @@ export class LevelScene extends Phaser.Scene {
       },
       floatText: (x, y, text, color) => addFloatingLine(this, x, y, text, color ?? COLORS.warning, 16),
       burstAt: (x, y, color, count) => pixelBurst(this, x, y, color, count),
+      speakLine: (line) => {
+        voice.speak({ ...line, subtitle: true });
+      },
     };
   }
 
@@ -943,6 +1031,7 @@ export class LevelScene extends Phaser.Scene {
       if (!enemy.active || !enemy.isAlive() || this.finished) {
         return;
       }
+      enemy.markLungeContact();
       const actual = this.player.takeDamage(enemy.getContactDamage(), enemy.x);
       if (actual > 0) {
         pixelBurst(this, this.player.x, this.player.y, COLORS.rust, 5);
@@ -1274,6 +1363,62 @@ export class LevelScene extends Phaser.Scene {
   private spawnJumpDust(doubleJump: boolean): void {
     const color = doubleJump ? COLORS.neon : COLORS.paperDim;
     pixelBurst(this, this.player.x, this.player.y + 30, color, doubleJump ? 7 : 4, 0.6);
+  }
+
+  private showSignedMark(): void {
+    this.clearSignedMark();
+    const root = this.add.container(this.player.x, this.player.y - 64);
+    root.setDepth(38);
+    const g = this.add.graphics();
+    g.fillStyle(COLORS.coal, 0.9);
+    g.fillRect(-38, -14, 76, 28);
+    g.lineStyle(2, COLORS.rust, 1);
+    g.strokeRect(-38, -14, 76, 28);
+    const label = this.add.text(0, 0, STRINGS.level.stampMark, {
+      fontFamily: FONTS.mono,
+      fontSize: '12px',
+      color: CSS.rust,
+      fontStyle: 'bold',
+    });
+    label.setOrigin(0.5);
+    root.add([g, label]);
+    root.setScale(0.6);
+    root.setAngle(-0.06);
+    this.tweens.add({
+      targets: root,
+      scale: 1,
+      duration: 160,
+      ease: 'Back.easeOut',
+    });
+    this.signedMark = root;
+    this.signedMarkUntil = this.time.now + 1300;
+  }
+
+  private updateSignedMark(time: number): void {
+    if (!this.signedMark) {
+      return;
+    }
+    if (!this.signedMark.active) {
+      this.signedMark = null;
+      return;
+    }
+    this.signedMark.setPosition(this.player.x, this.player.y - 64);
+    if (time >= this.signedMarkUntil) {
+      const mark = this.signedMark;
+      this.signedMark = null;
+      this.tweens.add({
+        targets: mark,
+        alpha: 0,
+        y: mark.y - 18,
+        duration: 220,
+        onComplete: () => mark.destroy(true),
+      });
+    }
+  }
+
+  private clearSignedMark(): void {
+    this.signedMark?.destroy(true);
+    this.signedMark = null;
   }
 
   private beginGateLock(): void {
@@ -1949,6 +2094,9 @@ export class LevelScene extends Phaser.Scene {
     this.pendingReason = STRINGS.level.pitFall;
     this.player.setControlEnabled(false);
     this.touch?.setEnabled(false);
+    this.stampDemo?.reset();
+    this.stampLive?.reset();
+    this.clearSignedMark();
     this.hud.toast(STRINGS.level.pitFall, 'rust');
     this.player.takeDamage(PLAYER.fallRespawnDamage);
     if (this.finished) {
@@ -2016,5 +2164,16 @@ export class LevelScene extends Phaser.Scene {
     this.rewardCleanups.forEach((cleanup) => cleanup());
     this.rewardCleanups = [];
     this.quizOverlay = null;
+    this.stampDemo?.destroy();
+    this.stampLive?.destroy();
+    this.stampDemo = null;
+    this.stampLive = null;
+    this.stampBait = null;
+    this.clearSignedMark();
+    voice.stopAll();
+    if (this.voicePresenter) {
+      voice.setPresenter(null);
+      this.voicePresenter = null;
+    }
   }
 }

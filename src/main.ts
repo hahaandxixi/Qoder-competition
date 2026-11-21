@@ -12,6 +12,7 @@ import { ResultScene } from './scenes/ResultScene';
 import { CreditsScene } from './scenes/CreditsScene';
 import { AuditionScene } from './scenes/AuditionScene';
 import { audio } from './systems/AudioSystem';
+import { voice } from './systems/VoiceSystem';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -52,10 +53,12 @@ scene: [
 interface DebugWindow extends Window {
   __RACCOON_GAME__?: Phaser.Game;
   __RACCOON_AUDIO__?: typeof audio;
+  __RACCOON_VOICE__?: typeof voice;
 }
 
 const game = new Phaser.Game(config);
 if (import.meta.env.DEV || new URLSearchParams(window.location.search).has('debug')) {
   (window as DebugWindow).__RACCOON_GAME__ = game;
   (window as DebugWindow).__RACCOON_AUDIO__ = audio;
+  (window as DebugWindow).__RACCOON_VOICE__ = voice;
 }
