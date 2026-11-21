@@ -1028,32 +1028,39 @@ export class LevelScene extends Phaser.Scene {
     root.setDepth(450);
     const g = this.add.graphics();
     g.fillStyle(COLORS.coal, 0.9);
-    g.fillRect(-330, -58, 660, 116);
+    g.fillRect(-330, -66, 660, 132);
     g.lineStyle(2, COLORS.warning, 0.7);
-    g.strokeRect(-330, -58, 660, 116);
+    g.strokeRect(-330, -66, 660, 132);
     g.fillStyle(COLORS.rust, 0.95);
-    g.fillRect(-330, -58, 8, 116);
-    const title = this.add.text(0, -18, '第一幕 · 发布会大厦', {
+    g.fillRect(-330, -66, 8, 132);
+    const title = this.add.text(0, -34, '第一幕 · 发布会大厦', {
       fontFamily: FONTS.display,
       fontSize: '26px',
       color: CSS.paper,
       fontStyle: 'bold',
     });
     title.setOrigin(0.5);
-    const sub = this.add.text(0, 20, '名字被偷走了，纸单还留着原字。先过一次名字门。', {
+    const line = this.add.text(0, 2, `阿浣：${STRINGS.level.introLine}`, {
+      fontFamily: FONTS.body,
+      fontSize: '17px',
+      color: CSS.warning,
+      fontStyle: 'bold',
+    });
+    line.setOrigin(0.5);
+    const sub = this.add.text(0, 34, '名字被偷走了，纸单还留着原字。先过一次名字门。', {
       fontFamily: FONTS.body,
       fontSize: '13px',
       color: CSS.paperDim,
     });
     sub.setOrigin(0.5);
-    const tape = makeTape(this, 0, -58, 160, 18, COLORS.warning);
+    const tape = makeTape(this, 0, -66, 160, 18, COLORS.warning);
     tape.setRotation(-0.03);
-    root.add([g, title, sub, tape]);
+    root.add([g, title, line, sub, tape]);
     this.tweens.add({
       targets: root,
       alpha: 0,
       y: 92,
-      delay: 1850,
+      delay: 2600,
       duration: 500,
       ease: 'Sine.easeIn',
       onComplete: () => root.destroy(true),

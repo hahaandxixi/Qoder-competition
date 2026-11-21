@@ -35,6 +35,7 @@
     "stagger": "发布会暂停"
   },
   "level": {
+    "introLine": "不好，我的浮木被灭霸抓走了！",
     "tutorialMove": "A / D 移动 · SPACE 二段跳",
     "tutorialCombat": "J 射击 · K 冲刺",
     "tutorialDoor": "按 E 与名字门对线",
