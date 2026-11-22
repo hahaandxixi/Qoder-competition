@@ -18,7 +18,7 @@
     ],
     "best": "本地最佳档案",
     "noRecord": "尚无通关记录，档案室很空。",
-    "footer": "纯静态网页 · 无外部素材 · 音效在首次操作后开启",
+    "footer": "纯静态网页 · 程序化美术 · 语音为 TTS 占位",
     "muteOn": "声音：开",
     "muteOff": "声音：关"
   },
@@ -46,6 +46,7 @@
     "tutorialMove": "A / D 移动 · SPACE 二段跳",
     "tutorialCombat": "J 射击 · K 冲刺",
     "tutorialDoor": "按 E 与名字门对线",
+    "jumpGapHint": "按住 SPACE 起跳，空中再按一次",
     "doorPrompt": "名字门 404 · 按 E 查验",
     "doorLocked": "门缝里飘出一句：名字不对，不开。",
     "checkpoint": "临时签收点已更新",

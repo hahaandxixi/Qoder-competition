@@ -18,6 +18,8 @@ export interface StampTrapOptions {
   onPlayerHit?: () => void;
   onSupply?: () => void;
   onEnemyCrush?: (enemy: Enemy) => void;
+  onDemoStart?: () => void;
+  onDemoEnd?: () => void;
 }
 
 type TrapState = 'idle' | 'warning' | 'impact' | 'lifting' | 'spent';
@@ -35,6 +37,7 @@ export class StampTrap {
   private readonly impactY: number;
   private state: TrapState = 'idle';
   private demoStarted = false;
+  private demoActive = false;
   private plateLatched = false;
   private supplyCollected = false;
   private supply: Phaser.GameObjects.Container | null = null;
@@ -139,6 +142,10 @@ export class StampTrap {
     if (this.options.mode === 'demo') {
       this.demoStarted = true;
     }
+    if (this.demoActive) {
+      this.demoActive = false;
+      this.options.onDemoEnd?.();
+    }
   }
 
   destroy(): void {
@@ -176,6 +183,8 @@ export class StampTrap {
 
   private startDemo(): void {
     this.demoStarted = true;
+    this.demoActive = true;
+    this.options.onDemoStart?.();
     const box = this.scene.add.container(this.options.x - 190, this.options.groundY - 30);
     box.setDepth(15);
     const g = this.scene.add.graphics();
@@ -294,6 +303,10 @@ export class StampTrap {
         if (this.options.mode === 'demo' && this.supply) {
           this.supply.destroy(true);
           this.supply = null;
+        }
+        if (this.demoActive) {
+          this.demoActive = false;
+          this.options.onDemoEnd?.();
         }
       },
     });

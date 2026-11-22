@@ -403,6 +403,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite implements TouchTarget 
     this.dashFreeUntil = this.scene.time.now + durationMs;
   }
 
+  grantInvulnerability(durationMs: number): void {
+    this.invulnUntil = Math.max(this.invulnUntil, this.scene.time.now + durationMs);
+  }
+
   isDashFree(time: number): boolean {
     return time < this.dashFreeUntil;
   }

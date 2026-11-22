@@ -92,8 +92,9 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       this.bodyWidth = 34;
       this.patrolRange = 120;
       this.indicator = null;
-      body.setSize(34, 38);
-      body.setOffset(10, 16);
+      // 命中框覆盖可见头部；此前 38px 高的身体让站立射击从头顶掠过。
+      body.setSize(34, 50);
+      body.setOffset(10, 4);
       this.setFlipX(true);
     } else {
       this.maxHp = ENEMY.turretHp;

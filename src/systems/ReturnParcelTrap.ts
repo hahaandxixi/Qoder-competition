@@ -468,7 +468,7 @@ export class ReturnParcelTrap {
   }
 
   private buildSafeMark(): Phaser.GameObjects.Container {
-    const mark = addHotTag(this.scene, this.options.demoTriggerX, this.options.groundY - 54, '观察位', COLORS.neon, -0.02);
+    const mark = addHotTag(this.scene, this.options.demoTriggerX, this.options.groundY - 54, '练习观察位', COLORS.neon, -0.02);
     mark.setDepth(16);
     mark.setScale(0.72);
     return mark;

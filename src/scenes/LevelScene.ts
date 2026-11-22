@@ -132,6 +132,8 @@ export class LevelScene extends Phaser.Scene {
   private stampDemo: StampTrap | null = null;
   private stampLive: StampTrap | null = null;
   private stampBait: Enemy | null = null;
+  private stampDemoActive = false;
+  private jumpHintShown = false;
   private signedMark: Phaser.GameObjects.Container | null = null;
   private signedMarkUntil = 0;
   private voicePresenter: VoicePresenter | null = null;
@@ -173,6 +175,8 @@ export class LevelScene extends Phaser.Scene {
     this.stampDemo = null;
     this.stampLive = null;
     this.stampBait = null;
+    this.stampDemoActive = false;
+    this.jumpHintShown = false;
     this.signedMark = null;
     this.signedMarkUntil = 0;
     this.voicePresenter = null;
@@ -231,7 +235,7 @@ export class LevelScene extends Phaser.Scene {
       this.player.tick(time, delta);
       this.quizOverlay?.update(delta);
 
-      if (!this.quizOpen && !this.rewardOpen) {
+      if (!this.quizOpen && !this.rewardOpen && !this.stampDemoActive) {
         this.enemies.forEach((enemy) => enemy.tick(time));
       }
       this.tickAlly(time);
@@ -841,6 +845,9 @@ export class LevelScene extends Phaser.Scene {
       STRINGS.level.tutorialDoor,
     ]);
     this.addWorldSign(3540, 470, 250, 90, '售货机维修中', ['“检测到弱者饮料需求。”', '——机器也很无奈']);
+    const jumpHint = addHotTag(this, 1110, 500, STRINGS.level.jumpGapHint, COLORS.warning, -0.02);
+    jumpHint.setDepth(16);
+    jumpHint.setScale(0.72);
     const sign = addHotTag(this, 4220, 566, '收发室 →', COLORS.paperDim, -0.025);
     sign.setDepth(16);
     const topSign = addHotTag(this, 6080, 552, '取件窗口 →', COLORS.paperDim, 0.02);
@@ -933,6 +940,27 @@ export class LevelScene extends Phaser.Scene {
       player: () => this.player,
       enemies: () => this.enemies,
       canTrigger: () => !this.finished && !this.transitioning,
+      onDemoStart: () => {
+        this.stampDemoActive = true;
+        this.player.setControlEnabled(false);
+        this.touch?.setEnabled(false);
+        this.hud.setHint(null);
+        this.enemies.forEach((enemy) => {
+          enemy.setVelocity(0, 0);
+          voice.cancelOwner(enemy.voiceOwnerId);
+        });
+        this.enemyBullets.clear(true, true);
+      },
+      onDemoEnd: () => {
+        this.stampDemoActive = false;
+        if (this.finished || this.respawning) {
+          return;
+        }
+        const locked = this.quizOpen || this.rewardOpen || this.gateAnimating;
+        this.player.setControlEnabled(!locked);
+        this.touch?.setEnabled(!locked);
+        this.player.grantInvulnerability(1200);
+      },
     });
     this.stampLive = new StampTrap(this, {
       x: STAMP_LIVE_X,
@@ -1028,7 +1056,7 @@ export class LevelScene extends Phaser.Scene {
     });
     this.physics.add.overlap(this.player, this.enemyGroup, (_, enemyObj) => {
       const enemy = enemyObj as Enemy;
-      if (!enemy.active || !enemy.isAlive() || this.finished) {
+      if (this.stampDemoActive || !enemy.active || !enemy.isAlive() || this.finished) {
         return;
       }
       enemy.markLungeContact();
@@ -1049,7 +1077,7 @@ export class LevelScene extends Phaser.Scene {
     });
     this.physics.add.overlap(this.player, this.enemyBullets, (_, bulletObj) => {
       const bullet = bulletObj as Phaser.Physics.Arcade.Image;
-      if (!bullet.active || this.finished) {
+      if (this.stampDemoActive || !bullet.active || this.finished) {
         return;
       }
       const damage = Number(bullet.getData('damage') ?? ENEMY.turretDamage);
@@ -2113,6 +2141,14 @@ export class LevelScene extends Phaser.Scene {
       this.touch?.setEnabled(true);
       this.respawning = false;
       this.pendingReason = '网络热度归零';
+      if (!this.jumpHintShown) {
+        this.jumpHintShown = true;
+        this.time.delayedCall(350, () => {
+          if (!this.finished) {
+            this.hud.toast(STRINGS.level.jumpGapHint, 'paper');
+          }
+        });
+      }
     });
   }
 
