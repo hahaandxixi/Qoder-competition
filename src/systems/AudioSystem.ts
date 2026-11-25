@@ -276,7 +276,9 @@ private tension = false;
   private bossDashBus: GainNode | null = null;
   private bossDashSources: AudioScheduledSourceNode[] = [];
   private readonly voiceBuffers = new Map<VoiceClipName, AudioBuffer>();
+  private readonly voiceData = new Map<VoiceClipName, ArrayBuffer>();
   private readonly voiceLoads = new Map<VoiceClipName, Promise<AudioBuffer | null>>();
+  private readonly voiceDecodes = new Map<VoiceClipName, Promise<AudioBuffer | null>>();
   private readonly voiceSources = new Set<AudioBufferSourceNode>();
   private captureDest: MediaStreamAudioDestinationNode | null = null;
 
@@ -306,6 +308,7 @@ private tension = false;
         void this.ctx.resume().catch(() => undefined);
       }
       this.startScheduler();
+      this.decodePendingVoices();
     } catch {
       // Audio is optional; the game remains fully playable without it.
     }
@@ -407,9 +410,6 @@ private tension = false;
     if (pending) {
       return pending;
     }
-    if (!this.ctx) {
-      return Promise.resolve(null);
-    }
     const url = `${import.meta.env.BASE_URL}voice/${VOICE_CLIP_FILES[name]}`;
     const load = fetch(url)
       .then((response) => {
@@ -418,10 +418,9 @@ private tension = false;
         }
         return response.arrayBuffer();
       })
-      .then((data) => this.ctx!.decodeAudioData(data))
-      .then((buffer) => {
-        this.voiceBuffers.set(name, buffer);
-        return buffer;
+      .then((data) => {
+        this.voiceData.set(name, data);
+        return this.decodeVoiceData(name);
       })
       .catch(() => null)
       .finally(() => {
@@ -431,11 +430,54 @@ private tension = false;
     return load;
   }
 
+  private decodeVoiceData(name: VoiceClipName): Promise<AudioBuffer | null> {
+    const cached = this.voiceBuffers.get(name);
+    if (cached) {
+      return Promise.resolve(cached);
+    }
+    const ctx = this.ctx;
+    if (!ctx) {
+      return Promise.resolve(null);
+    }
+    const pending = this.voiceDecodes.get(name);
+    if (pending) {
+      return pending;
+    }
+    const data = this.voiceData.get(name);
+    if (!data) {
+      return Promise.resolve(null);
+    }
+    const decode = ctx
+      .decodeAudioData(data.slice(0))
+      .then((buffer) => {
+        this.voiceBuffers.set(name, buffer);
+        this.voiceData.delete(name);
+        return buffer;
+      })
+      .catch(() => null)
+      .finally(() => {
+        this.voiceDecodes.delete(name);
+      });
+    this.voiceDecodes.set(name, decode);
+    return decode;
+  }
+
+  private decodePendingVoices(): void {
+    for (const name of [...this.voiceData.keys()]) {
+      void this.decodeVoiceData(name);
+    }
+  }
+
   hasVoice(name: VoiceClipName): boolean {
     return this.voiceBuffers.has(name);
   }
 
-  playVoiceClip(name: VoiceClipName, volume = 1, maxDurationMs?: number): VoicePlayback | null {
+  playVoiceClip(
+    name: VoiceClipName,
+    volume = 1,
+    maxDurationMs?: number,
+    playbackRate = 1,
+  ): VoicePlayback | null {
     if (!this.ctx || !this.master || this.muted || this.ctx.state !== 'running') {
       return null;
     }
@@ -444,14 +486,19 @@ private tension = false;
       return null;
     }
     try {
+      const rate = Math.max(0.1, playbackRate);
       const source = this.ctx.createBufferSource();
       const gain = this.ctx.createGain();
       source.buffer = buffer;
+      source.playbackRate.setValueAtTime(rate, this.ctx.currentTime);
       gain.gain.value = volume;
       source.connect(gain);
       gain.connect(this.master);
       const startAt = this.ctx.currentTime + 0.01;
-      const durationMs = Math.min(buffer.duration * 1000, maxDurationMs ?? Number.POSITIVE_INFINITY);
+      const durationMs = Math.min(
+        (buffer.duration * 1000) / rate,
+        maxDurationMs ?? Number.POSITIVE_INFINITY,
+      );
       source.start(startAt);
       source.stop(startAt + durationMs / 1000);
       this.voiceSources.add(source);
@@ -702,7 +749,7 @@ private tension = false;
   fanfare(): void {
     const ctx = this.ctx;
     const master = this.master;
-    if (!ctx || !master) {
+    if (!ctx || !master || this.muted || ctx.state !== 'running') {
       return;
     }
     const t0 = ctx.currentTime + 0.02;
@@ -1023,25 +1070,40 @@ private tension = false;
     }
   }
 
+  private ensureNoiseBuffer(): AudioBuffer | null {
+    const ctx = this.ctx;
+    if (!ctx) {
+      return null;
+    }
+    if (!this.noiseBuffer) {
+      const buffer = ctx.createBuffer(1, Math.max(1, Math.floor(ctx.sampleRate)), ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < data.length; i += 1) {
+        data[i] = Math.random() * 2 - 1;
+      }
+      this.noiseBuffer = buffer;
+    }
+    return this.noiseBuffer;
+  }
+
   private noise(start: number, duration: number, volume: number): void {
     if (!this.ctx || !this.master) {
       return;
     }
+    const buffer = this.ensureNoiseBuffer();
+    if (!buffer) {
+      return;
+    }
     try {
-      const frames = Math.max(1, Math.floor(this.ctx.sampleRate * duration));
-      const buffer = this.ctx.createBuffer(1, frames, this.ctx.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < frames; i += 1) {
-        data[i] = Math.random() * 2 - 1;
-      }
+      const playFor = Math.max(0.001, Math.min(duration, buffer.duration));
       const src = this.ctx.createBufferSource();
       const gain = this.ctx.createGain();
       src.buffer = buffer;
       gain.gain.setValueAtTime(volume, start);
-      gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + playFor);
       src.connect(gain);
       gain.connect(this.master);
-      src.start(start);
+      src.start(start, 0, playFor);
     } catch {
       // Ignore.
     }
@@ -1223,19 +1285,12 @@ private tension = false;
 
   private musicNoise(t: number, dur: number, kind: 'snare' | 'hat'): void {
     const ctx = this.ctx;
-    if (!ctx || !this.musicGain) {
+    const buffer = this.ensureNoiseBuffer();
+    if (!ctx || !this.musicGain || !buffer) {
       return;
     }
-    if (!this.noiseBuffer) {
-      const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.5), ctx.sampleRate);
-      const data = buf.getChannelData(0);
-      for (let i = 0; i < data.length; i += 1) {
-        data[i] = Math.random() * 2 - 1;
-      }
-      this.noiseBuffer = buf;
-    }
     const src = ctx.createBufferSource();
-    src.buffer = this.noiseBuffer;
+    src.buffer = buffer;
     const filter = ctx.createBiquadFilter();
     if (kind === 'snare') {
       filter.type = 'bandpass';

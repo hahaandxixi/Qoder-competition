@@ -13,7 +13,7 @@ export const VOICE_CLIP_DURATION_MS: Record<VoiceClipName, number> = {
   opossumMumble: 1840,
   opossumGuard: 3305,
   lobsterFirst: 2628,
-  lobsterBreak: 2005,
+  lobsterBreak: 2210,
   droneCheck: 1637,
   raccoonDefeat: 2156,
 };

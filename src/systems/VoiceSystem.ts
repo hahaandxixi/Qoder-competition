@@ -37,17 +37,12 @@ class VoiceSystem {
   private current: ActiveVoice | null = null;
   private queue: VoiceLine[] = [];
   private readonly seen = new Set<string>();
-  private preloaded = false;
 
   setPresenter(presenter: VoicePresenter | null): void {
     this.presenter = presenter;
   }
 
   preloadAll(): void {
-    if (this.preloaded) {
-      return;
-    }
-    this.preloaded = true;
     for (const clip of Object.keys(VOICE_CLIP_FILES) as VoiceClipName[]) {
       void audio.preloadVoice(clip);
     }
@@ -114,7 +109,7 @@ class VoiceSystem {
 
     let source: AudioBufferSourceNode | null = null;
     if (!audio.isMuted()) {
-      const playback = audio.playVoiceClip(line.clip, line.volume ?? 1, durationMs);
+      const playback = audio.playVoiceClip(line.clip, line.volume ?? 1, durationMs, rate);
       if (playback) {
         source = playback.source;
         audio.setDuck(true, 'voice');

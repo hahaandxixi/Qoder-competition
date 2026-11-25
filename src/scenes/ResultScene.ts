@@ -67,7 +67,9 @@ export class ResultScene extends Phaser.Scene {
     this.cleanups.forEach((cleanup) => cleanup());
     this.cleanups = [];
     audio.setResult(this.payload.victory);
-    audio.play(this.payload.victory ? 'victory' : 'defeat');
+    if (!this.payload.victory) {
+      audio.play('defeat');
+    }
 
     if (this.shouldRecord) {
       const recorded = SaveSystem.recordRun(this.payload);
@@ -452,7 +454,6 @@ export class ResultScene extends Phaser.Scene {
 
   /** 两幕通关：结算机打印最后一张过期件，扫码后只留下阿浣的回答。 */
   private buildFinalEnding(): void {
-    audio.setMusic('result');
     const dim = this.add.graphics();
     dim.fillStyle(COLORS.coal, 0.78);
     dim.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);

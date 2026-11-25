@@ -278,7 +278,7 @@
     "assets": [
       "角色、敌人、Boss、场景与 UI：\n全部由代码程序化绘制（自制）。",
       "音效与背景音乐：WebAudio\n实时合成（自制），未使用任何视频或音频片段。",
-      "角色语音：本版暂用系统 TTS 生成的占位音，\n非队伍真人录音；字幕同步，后续可替换。",
+      "角色语音：本版为 Windows Microsoft Huihui Desktop 系统 TTS 生成的占位音，\n非队伍真人录音；字幕同步，后续可替换。",
       "引擎：Phaser 3（MIT）；构建：Vite（MIT）；\n语言：TypeScript（Apache-2.0）。",
       "字体：使用设备本地系统字体，\n未从外部 CDN 加载字体。"
     ],
@@ -311,7 +311,7 @@
     "opossumGuard": "你的胆子真是肥嘟嘟的。",
     "lobsterTaunt": "请排队取号。",
     "lobsterFirstShot": "遥遥领先。",
-    "lobsterBreak": "不烧心。",
+    "lobsterBreak": "过载了，请重新取号。",
     "droneCheck": "我要验牌！",
     "hitLabel": "包裹受损"
   },
