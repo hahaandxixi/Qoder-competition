@@ -180,6 +180,7 @@ export class LevelScene extends Phaser.Scene {
     this.signedMark = null;
     this.signedMarkUntil = 0;
     this.voicePresenter = null;
+    Enemy.resetLobsterKills();
 
     this.run = getRunState(this);
     this.run.act = 1;
@@ -1718,6 +1719,7 @@ export class LevelScene extends Phaser.Scene {
     this.spawnPoint = { x: CHECKPOINT_X, y: 560 };
     this.player.heal(Math.round(PLAYER.maxHp * 0.3));
     this.run.hp = this.player.getHp();
+    this.hud.toast(STRINGS.door.rewardHeal, 'paper');
     this.gateAnimating = true;
     this.playGate1ScannerSequence();
   }
@@ -1728,6 +1730,7 @@ export class LevelScene extends Phaser.Scene {
     this.spawnPoint = { x: 6180, y: 560 };
     this.player.heal(Math.round(PLAYER.maxHp * 0.3));
     this.run.hp = this.player.getHp();
+    this.hud.toast(STRINGS.door.rewardHeal, 'paper');
     this.gateAnimating = true;
     audio.play('rewind');
     this.hud.toast(STRINGS.door.windowRewind, 'neon');
@@ -2048,7 +2051,6 @@ export class LevelScene extends Phaser.Scene {
       });
     }
     this.cards.acquire(chosen.id);
-    this.player.heal(Math.round(PLAYER.maxHp * 0.3));
     this.run.hp = this.player.getHp();
     audio.play('card');
     pixelBurst(this, GAME_WIDTH / 2, 380, COLORS.warning, 12, 1.2);
@@ -2062,7 +2064,6 @@ export class LevelScene extends Phaser.Scene {
     accepted.setDepth(4);
     this.time.delayedCall(360, () => {
       this.closeReward();
-      this.hud.toast(STRINGS.door.rewardHeal, 'paper');
       this.time.delayedCall(1000, () => this.hud.toast(chosen.quote, 'neon'));
     });
   }

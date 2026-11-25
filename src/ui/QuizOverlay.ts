@@ -614,7 +614,7 @@ audio.setDuck(true, 'quiz');
   }
 
   private choose(index: number): void {
-    if (this.resolved) {
+    if (this.resolved || !this.armed) {
       return;
     }
     const option = this.config.prepared.options[index];

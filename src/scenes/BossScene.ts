@@ -414,7 +414,7 @@ export class BossScene extends Phaser.Scene {
     this.hud = new Hud(this, {
       bossMode: true,
       onUseCard: (index) => {
-        if (this.finished || this.transitioning || this.parryActive) {
+        if (this.finished || this.transitioning || this.parryActive || this.introActive) {
           return;
         }
         this.cards.useSlot(index);
@@ -1432,7 +1432,9 @@ export class BossScene extends Phaser.Scene {
             this.cameras.main.shake(160, 0.01);
           }
           this.hud.toast(STRINGS.quiz.parryFail, 'rust');
-          this.pendingReason = '网络热度归零';
+          if (!this.player.isDead()) {
+            this.pendingReason = '网络热度归零';
+          }
         }
       },
       onClose: () => {
@@ -1446,16 +1448,16 @@ export class BossScene extends Phaser.Scene {
           this.boss.clearTint();
         }
         this.boss.setVelocity(0, 0);
-        this.nextSpecialAt = this.time.now + BOSS.specialCooldownMs;
+        const advancedPhase = this.pendingPhase;
+        this.pendingPhase = null;
+        this.nextSpecialAt = this.time.now + (advancedPhase ? 1200 : BOSS.specialCooldownMs);
         this.nextAttackAt = this.time.now + 1000;
         if (this.pendingCardId) {
           this.cards.acquire(this.pendingCardId);
           this.pendingCardId = null;
         }
-        if (this.pendingPhase) {
-          const phase = this.pendingPhase;
-          this.pendingPhase = null;
-          this.showPhaseBanner(phase);
+        if (advancedPhase) {
+          this.showPhaseBanner(advancedPhase);
         }
       },
     });

@@ -35,6 +35,7 @@ import { MemeMeter } from '../systems/MemeMeter';
 import { QuizSystem } from '../systems/QuizSystem';
 import { elapsedMs, getRunState } from '../systems/RunState';
 import { audio } from '../systems/AudioSystem';
+import { voice } from '../systems/VoiceSystem';
 
 const BOSS_HOVER_X = 930;
 const BOSS_HOVER_Y = 500;
@@ -135,6 +136,7 @@ export class WastelandBossScene extends Phaser.Scene {
     this.cameras.main.fadeIn(280, 23, 19, 16);
     audio.resetSceneMix();
     audio.setMusic('boss');
+    voice.preloadAll();
 
     this.buildArena();
     this.player = new Player(this, 220, 560, this.run.hp, this.makePlayerCallbacks());
@@ -175,6 +177,7 @@ export class WastelandBossScene extends Phaser.Scene {
     }
     if (!this.finished) {
       this.player.tick(time, delta);
+      audio.setTension(this.player.getHp() <= this.player.getMaxHp() * PLAYER.lowHpRatio);
       this.quizOverlay?.update(delta);
       this.boss.tick(time);
       this.tickAlly(time);
@@ -1261,6 +1264,9 @@ export class WastelandBossScene extends Phaser.Scene {
   private summonAlly(durationMs: number): boolean {
     if (this.boss.isDead() || this.finished) {
       return false;
+    }
+    if (this.ally && this.ally.active) {
+      this.ally.destroy();
     }
     this.ally = new Ally(
       this,

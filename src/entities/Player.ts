@@ -163,6 +163,16 @@ export class Player extends Phaser.Physics.Arcade.Sprite implements TouchTarget 
       return;
     }
     const canGroundJump = grounded || this.coyoteUntil > time;
+    const canDoubleJump = !canGroundJump && this.jumpsUsed < 2;
+    if (!canGroundJump && !canDoubleJump) {
+      return;
+    }
+    if (this.dashing) {
+      this.dashing = false;
+      this.dashEndsAt = 0;
+      (this.body as Phaser.Physics.Arcade.Body).setAllowGravity(true);
+      this.setVelocityX(this.facing * PLAYER.moveSpeed * 0.55);
+    }
     if (canGroundJump) {
       this.jumpsUsed = 1;
       this.coyoteUntil = 0;
@@ -173,14 +183,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite implements TouchTarget 
       this.callbacks.jumped(false);
       return;
     }
-    if (this.jumpsUsed < 2) {
-      this.jumpsUsed = 2;
-      this.jumpBufferedUntil = 0;
-      this.setVelocityY(PLAYER.doubleJumpVelocity);
-      this.jumpCutFromKeyboard = this.isKeyboardJumpHeld();
-      audio.play('doubleJump');
-      this.callbacks.jumped(true);
-    }
+    this.jumpsUsed = 2;
+    this.jumpBufferedUntil = 0;
+    this.setVelocityY(PLAYER.doubleJumpVelocity);
+    this.jumpCutFromKeyboard = this.isKeyboardJumpHeld();
+    audio.play('doubleJump');
+    this.callbacks.jumped(true);
   }
 
   private tryConsumeDash(time: number): void {

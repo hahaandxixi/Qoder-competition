@@ -261,6 +261,7 @@ export class IslandScene extends Phaser.Scene {
       return;
     }
     this.player.tick(time, delta);
+    audio.setTension(this.player.getHp() <= this.player.getMaxHp() * PLAYER.lowHpRatio);
     this.quizOverlay?.update(delta);
     if (!this.quizOpen && !this.rewardOpen && !this.gateAnimating) {
       this.crabs.forEach((crab) => crab.tick(time));
@@ -1860,6 +1861,9 @@ export class IslandScene extends Phaser.Scene {
     if (this.crabs.length === 0) {
       this.hud.toast('附近没有补给目标。', 'paper');
       return false;
+    }
+    if (this.ally && this.ally.active) {
+      this.ally.destroy();
     }
     this.ally = new Ally(
       this,

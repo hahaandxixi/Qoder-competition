@@ -40,6 +40,10 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   private static nextVoiceId = 1;
   private static lobsterKills = 0;
 
+  static resetLobsterKills(): void {
+    Enemy.lobsterKills = 0;
+  }
+
   readonly kind: EnemyKind;
   readonly voiceOwnerId: string;
   private readonly host: EnemyHost;
@@ -308,6 +312,9 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   takeHit(damage: number, fromX: number): void {
     if (!this.alive) {
       return;
+    }
+    if (this.dormant) {
+      this.wake();
     }
     this.hp -= damage;
     this.hpBarVisible = true;

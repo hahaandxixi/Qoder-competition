@@ -43,7 +43,10 @@ export class TouchControls {
     this.root = scene.add.container(0, 0);
     this.root.setScrollFactor(0);
     this.root.setDepth(UI.touchDepth);
-    scene.input.addPointer(3);
+    const inputManager = scene.input.manager;
+    if (inputManager.pointersTotal < 5) {
+      scene.input.addPointer(Math.min(3, 5 - inputManager.pointersTotal));
+    }
 
     this.makeHoldButton(88, GAME_HEIGHT - 76, 88, 88, '◀', '左', (pressed) => {
       this.target.setTouchMove(pressed ? -1 : 0);
