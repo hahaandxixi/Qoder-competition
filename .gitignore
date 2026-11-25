@@ -34,3 +34,6 @@ venv/
 *.log
 tmp/
 .tmp-esbuild/
+
+# Qoder Sites descriptor
+*.qoder.site
