@@ -62,6 +62,7 @@ export class WastelandBossScene extends Phaser.Scene {
   private attackBusy = false;
   private fakeVictoryDone = false;
   private fakeVictoryActive = false;
+  private fakeVictoryLever: Phaser.GameObjects.Container | null = null;
   private pendingFakeVictory = false;
   private attackEpoch = 0;
   private nextAttackAt = 0;
@@ -98,6 +99,7 @@ export class WastelandBossScene extends Phaser.Scene {
     this.attackBusy = false;
     this.fakeVictoryDone = false;
     this.fakeVictoryActive = false;
+    this.fakeVictoryLever = null;
     this.pendingFakeVictory = false;
     this.attackEpoch = 0;
     this.nextAttackAt = 0;
@@ -2130,6 +2132,8 @@ export class WastelandBossScene extends Phaser.Scene {
     this.fakeVictoryDone = true;
     this.fakeVictoryActive = true;
     this.pendingFakeVictory = false;
+    // 第二管必须独立于演出特效启动，避免某段文字/特效异常把整场卡死。
+    this.time.delayedCall(1940, () => this.beginSecondBar());
     this.fightStarted = false;
     this.attackEpoch += 1;
     this.attackBusy = false;
@@ -2182,7 +2186,7 @@ export class WastelandBossScene extends Phaser.Scene {
     });
 
     this.time.delayedCall(860, () => {
-      if (this.finished) {
+      if (this.finished || !this.fakeVictoryActive) {
         return;
       }
       const drone = this.add.image(GAME_WIDTH - 118, 96, TEX.drone);
@@ -2204,7 +2208,7 @@ export class WastelandBossScene extends Phaser.Scene {
     });
 
     this.time.delayedCall(1320, () => {
-      if (this.finished) {
+      if (this.finished || !this.fakeVictoryActive) {
         return;
       }
       this.boss.clearTint();
@@ -2219,6 +2223,7 @@ export class WastelandBossScene extends Phaser.Scene {
       lg.fillCircle(10, -46, 8);
       lever.add(lg);
       lever.setAngle(-28);
+      this.fakeVictoryLever = lever;
       this.tweens.add({ targets: lever, angle: 28, duration: 180, ease: 'Cubic.easeOut' });
       audio.play('stampThud');
       this.cameras.main.shake(160, 0.01);
@@ -2233,14 +2238,15 @@ export class WastelandBossScene extends Phaser.Scene {
       leverage.setDepth(451);
       leverage.setScrollFactor(0);
       this.tweens.add({ targets: leverage, alpha: 0, delay: 900, duration: 320, onComplete: () => leverage.destroy() });
-      this.time.delayedCall(620, () => this.beginSecondBar(lever));
     });
   }
 
-  private beginSecondBar(lever?: Phaser.GameObjects.Container): void {
-    if (this.finished || !this.fakeVictoryDone) {
+  private beginSecondBar(): void {
+    if (this.finished || !this.fakeVictoryDone || !this.fakeVictoryActive) {
       return;
     }
+    const lever = this.fakeVictoryLever;
+    this.fakeVictoryLever = null;
     this.boss.startSecondBar();
     this.boss.setPosition(BOSS_HOVER_X, BOSS_HOVER_Y);
     this.boss.setAlpha(1);

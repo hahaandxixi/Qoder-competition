@@ -6,6 +6,7 @@ import type { QuestionSlip, QuizResult } from '../types/game';
 import type { PreparedQuiz } from '../systems/QuizSystem';
 import { audio } from '../systems/AudioSystem';
 import { glitchText, makeTape, paperPanel, stamp } from '../art/uiKit';
+import { isTouchDevice } from './TouchControls';
 
 export interface QuizOverlayConfig {
   mode: 'parry' | 'door';
@@ -163,16 +164,18 @@ audio.setDuck(true, 'quiz');
     this.root.add(this.secondsText);
 
     const avatars = [TEX.avatarA, TEX.avatarB, TEX.avatarC];
-    const optionStartY = this.slipLayout ? 218 : 158;
-    const optionStepY = this.slipLayout ? 58 : 66;
+    const touch = isTouchDevice();
+    const optionHeight = touch ? 72 : 56;
+    const optionStepY = touch ? 78 : this.slipLayout ? 58 : 66;
+    const optionStartY = this.slipLayout ? 218 : touch ? 160 : 158;
     this.config.prepared.options.forEach((option, index) => {
       const y = optionStartY + index * optionStepY;
-      const view = this.createParryOption(option, index, y, avatars[index % avatars.length] ?? TEX.avatarA);
+      const view = this.createParryOption(option, index, y, avatars[index % avatars.length] ?? TEX.avatarA, optionHeight);
       this.optionViews.push(view);
       this.root.add(view.container);
     });
 
-    if (!this.slipLayout) {
+    if (!this.slipLayout && !touch) {
       const hint = this.scene.add.text(GAME_WIDTH / 2, 331, STRINGS.quiz.keyHint, {
         fontFamily: FONTS.mono,
         fontSize: '11px',
@@ -228,9 +231,9 @@ audio.setDuck(true, 'quiz');
     index: number,
     y: number,
     avatar: string,
+    height: number,
   ): OptionView {
     const width = 1120;
-    const height = 56;
     const container = this.scene.add.container(GAME_WIDTH / 2, y);
     const bg = this.scene.add.graphics();
     const keyBox = this.scene.add.graphics();

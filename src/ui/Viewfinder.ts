@@ -23,6 +23,8 @@ export class Viewfinder {
   private progress = 0;
   private closing = false;
   private closed = false;
+  private destroyed = false;
+  private closeTween: Phaser.Tweens.Tween | null = null;
 
   constructor(scene: Phaser.Scene, options: ViewfinderOptions) {
     this.scene = scene;
@@ -56,16 +58,19 @@ export class Viewfinder {
 
   /** progress 0 = 大框，1 = 收拢完成。 */
   setProgress(progress: number): void {
+    if (this.destroyed) {
+      return;
+    }
     this.progress = Phaser.Math.Clamp(progress, 0, 1);
     this.draw();
   }
 
   close(durationMs: number, onComplete?: () => void): void {
-    if (this.closing) {
+    if (this.closing || this.destroyed) {
       return;
     }
     this.closing = true;
-    this.scene.tweens.addCounter({
+    this.closeTween = this.scene.tweens.addCounter({
       from: this.progress,
       to: 1,
       duration: durationMs,
@@ -74,8 +79,12 @@ export class Viewfinder {
         this.setProgress(tween.getValue() ?? 1);
       },
       onComplete: () => {
+        if (this.destroyed) {
+          return;
+        }
         this.closed = true;
         this.closing = false;
+        this.closeTween = null;
         this.flash();
         onComplete?.();
       },
@@ -94,10 +103,19 @@ export class Viewfinder {
   }
 
   destroy(): void {
+    if (this.destroyed) {
+      return;
+    }
+    this.destroyed = true;
+    this.closeTween?.stop();
+    this.closeTween = null;
     this.root.destroy(true);
   }
 
   private draw(): void {
+    if (this.destroyed) {
+      return;
+    }
     const scale = 1 - this.progress * 0.48;
     const w = this.width * scale;
     const h = this.height * scale;
